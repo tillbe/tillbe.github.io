@@ -1,0 +1,36 @@
+#content {
+    font-size:115%;
+    line-height: 160%;
+/*    text-align: justify;
+    text-justify: inter-word;
+*/}
+
+.summary{
+    font-size:115%;
+    line-height: 160%;
+
+}
+
+.blockquote{
+    font-size:115%;
+    line-height: 140%;
+
+}
+
+h1 {
+    font-size: 36px;
+}
+
+h2 {
+    font-size: 26px;
+}
+
+h3 {
+    font-size: 22px;
+}
+
+/*for the ipython notebook renderings*/
+/* hides input prompt for markdown cells*/
+.text_cell .input_prompt {
+    display: none;
+}

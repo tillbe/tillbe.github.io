@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+        <meta charset="utf-8" />
+        <title>A Pelican Blog - outliers</title>
+        <link rel="stylesheet" href="/theme/css/main.css" />
+        <link href="/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="A Pelican Blog Atom Feed" />
+
+        <!--[if IE]>
+            <script src="https://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+        <![endif]-->
+</head>
+
+<body id="index" class="home">
+        <header id="banner" class="body">
+                <h1><a href="/">A Pelican Blog </a></h1>
+                <nav><ul>
+                    <li><a href="/pages/about.html">About</a></li>
+                    <li><a href="/pages/publications.html">Publications</a></li>
+                    <li><a href="/pages/insight-project.html">Insight Project</a></li>
+                    <li><a href="/pages/resources.html">Resources</a></li>
+                    <li><a href="/category/misc.html">misc</a></li>
+                </ul></nav>
+        </header><!-- /#banner -->
+
+            <aside id="featured" class="body">
+                <article>
+                    <h1 class="entry-title"><a href="/outlier-influence-identification.html">Identifying outliers and influential cases</a></h1>
+<footer class="post-info">
+        <abbr class="published" title="2015-10-21T00:00:00+00:00">
+                Published: Wed 21 October 2015
+        </abbr>
+
+<p>In <a href="/category/misc.html">misc</a>.</p>
+<p>tags: <a href="/tag/r.html">R</a> <a href="/tag/outliers.html">outliers</a> <a href="/tag/influence.html">influence</a> <a href="/tag/diagnostics.html">diagnostics</a> </p>
+</footer><!-- /.post-info --><p>With experimental data, you commonly have to deal with "outliers", that is, data points that behave differently than the rest of the data for some reason. These outliers can influence the analysis and thus the interpretation of the data. In this blog post, we will look at these outliers and what exactly they are, and how they can influence data analysis and interpretation. Using simple linear regression as an example, we will go through some cases where individual data points influence the model significantly, and use R to identify them.</p>
+<h2><strong>Leverage, discrepancy and influence</strong></h2>
+<blockquote>
+<p>Some observations do not fit the model well—these are called outliers. Other observations change the fit of the model in a substantive manner—these are called influential observations. A point can be none, one or both of these. A leverage point is unusual in the predictor space—it has the potential to influence the fit. <a name=cite-Faraway2005></a>(<a href="#bib-Faraway2005">Faraway, 2005</a>)</p>
+</blockquote>
+<p>While a lot of researchers talk about outliers in a very general way, there are actually different types of unusual data points, and only one is "officially" termed an outlier. A data point can be unusual in its predictor behavior (in simple regression, the $x$-value), its outcome (in simple regression, the $y$-value), or both.</p>
+<p>A point that is highly different in its predictor behavior than the rest of the data is a <strong>leverage point</strong>. In the case of a simple linear regression, that means that its $x$-value is either much higher or lower than the mean of the predictor. </p>
+<p>If a point has an unusual $y$-value given its $x$-value, it has high <strong>discrepancy</strong>. This is what is called a outlier within the regression framework.</p>
+<p>Neither of these feature necessarily makes a data point <strong>influence</strong> a linear model. In fact, the <strong>influence</strong> of a single data point is defined as its leverage $\times$ its discrepancy. This means that simply having high leverage or high discrepancy is not always enough to change model parameters.</p>
+<p>The figure below illustrate these three characteristics. In each of the three panels,the red line shows the line of best fit without the point in question (marked by the triangle), while the blue line shows the line of best fit with it. In panel A, the the data point with the triangle has a high leverage - its $x$-value is much higher than the rests. In panel B, it has a high discrepancy - it lies pretty far away from the line of best fit. However, neither of these points exert a lot of influence on our model parameters, as the red line does not diverge a lot from the blue line. In panel C, we see a point that has both high leverage and high discrepancy, and as a result, high influence: The blue line is very different than the red line.</p>
+<p><img alt="" src="figure/outlier-influence-identification/unnamed-chunk-2-1.png"></p>
+<p><a href="/barplots-are-pies.html">While plotting data can give you an idea on which points are influential</a> and is highly recommended, it might become a little unfeasible with a larger sample size. Different measures exist to assess each of these three values, and I will go through them one by one using a very basic example. </p>
+<h2><strong>Our example data</strong></h2>
+<p>In this tutorial, we will use a data set based on an example in <a name=cite-Faraway2005></a><a href="#bib-Field2012"> Field, Miles, and Field (2012)</a>. The data set consists of eight samples. Our $x$-value, the predictor, is the number of pubs within a borough (district) of London, and our $y$-value, the number of deaths in that borough over a certain period of time. We are interested in how the number of deaths are related to the number of pubs in each boroughs, which means we'll use a simple linear regression with one predictor as our model.</p>
+<p>Let's take a quick peak at the data:</p>
+<div class="highlight"><pre><span></span>pubs 
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>##   pubs    deaths name
+## 1   10  1043.822    1
+## 2   25  2086.934    2
+## 3   40  2951.086    3
+## 4   55  3992.459    4
+## 5   70  5088.003    5
+## 6   85  6095.645    6
+## 7  100  6923.497    7
+## 8  500 10000.000    8
+</pre></div>
+
+
+<p>And plot the line of best fit:</p>
+<p><img alt="" src="figure/outlier-influence-identification/unnamed-chunk-4-1.png"></p>
+<p>Both from the raw data and the plot of the linear regression, it's obvious that one data point, point 8, is quite different than the rest. Not only is the number of pubs much higher than the rest, but the number of deaths seems to be in a different relation than in each of the other boroughs. Interesting!</p>
+<p>Now that we already have some suspicion about this particular data point, let's see if this point has <em>a)</em> leverage <em>b)</em> discrepancy and <em>c)</em> influence. </p>
+<h2><strong>Assessing leverage</strong></h2>
+<p>Remember that leverage measures how far a predictor value is different to the rest of the predictor values. In simple linear regression, we can simply measure the distance to the mean of the predictor ($\bar{X}$) for each individual predictor point ($X_i$). A standardized version of this distance is called <em>hat-value</em> and denoted by $h_i$ (for $i = {1 \ldots n}$):</p>
+<p>$$\begin{aligned} 
+h_i &amp;= \frac{1}{n} + \frac{(X_i - \bar{X})^2}{\sum^n_{j=1}(X_j-\bar{X})^2}
+\end{aligned}$$  </p>
+<p>The average hat value is defined as $\frac{p+1}{n}$, in which $p$ is the number of predictors and $n$ the number of participants/cases. Values of $h$ are bound between $1/n$ and 1, with 1 denoting highest leverage (highest distance from mean). </p>
+<p>By looking at our example data, you should immediately guess that point 8 has the highest leverage of all points. Let's use the above formula to calculate $h_8$:</p>
+<div class="highlight"><pre><span></span><span class="c1"># number of cases</span>
+n <span class="o">=</span> <span class="kp">nrow</span><span class="p">(</span>pubs<span class="p">)</span>
+
+<span class="c1"># distance to mean of point 8</span>
+numerator <span class="o">=</span> <span class="p">(</span>pubs<span class="o">$</span>pubs<span class="p">[</span><span class="m">8</span><span class="p">]</span> <span class="o">-</span> <span class="kp">mean</span><span class="p">(</span>pubs<span class="o">$</span>pubs<span class="p">))</span><span class="o">**</span><span class="m">2</span>
+
+<span class="c1"># distance to mean of all the other points</span>
+denominator <span class="o">=</span> <span class="kp">sum</span><span class="p">((</span>pubs<span class="o">$</span>pubs <span class="o">-</span> <span class="kp">mean</span><span class="p">(</span>pubs<span class="o">$</span>pubs<span class="p">))</span><span class="o">**</span><span class="m">2</span><span class="p">)</span>
+
+<span class="c1"># putting it together</span>
+h_8 <span class="o">=</span> <span class="m">1</span><span class="o">/</span>n<span class="o">+</span>numerator<span class="o">/</span>denominator
+
+h_8
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>## [1] 0.969302
+</pre></div>
+
+
+<p>The resulting hat-value is 0.969302. That is quite high - in fact, it's very close to 1, the highest possible value! Luckily, you don't have to calculate all hat-values by hand, as R provides a convenient <code>hatvalues</code> function that can be called on any linear model. To let R do its magic, let's first fit a simple linear model by calling <code>lm</code>, and then extracting the hat-values:</p>
+<div class="highlight"><pre><span></span><span class="c1"># fitting linear model</span>
+mod.pubs <span class="o">=</span> lm<span class="p">(</span>deaths<span class="o">~</span>pubs<span class="p">,</span> data<span class="o">=</span>pubs<span class="p">)</span>
+
+<span class="c1"># getting hatvalues and printing them</span>
+hs <span class="o">=</span> hatvalues<span class="p">(</span>mod.pubs<span class="p">)</span>
+<span class="kp">as.numeric</span><span class="p">(</span>hs<span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>## [1] 0.1813863 0.1658284 0.1527766 0.1422307 0.1341907 0.1286567 0.1256287
+## [8] 0.9693020
+</pre></div>
+
+
+<p>Luckily, our by-hand calculation matches the value R provides for data point 8. You can also see that all other hat-values are relatively close to 0. Remember that leverage alone does not mean a point exerts high influence, but it certainly means it's worth investigating. Hat values are open to interpretation, but a cut-off value that is common is twice the average $\bar{h}$, meaning anything above that value should be looked at closer. In this case, $h_8$ is definitely unusual!</p>
+<p>After having assessed leverage, let's look at discrepancy. How unusual is the $y$-value given its $x$-value?</p>
+<h2><strong>Assessing discrepancy</strong></h2>
+<p>As explained above, points that do not have a good fit to the linear regression line are considered outliers or are points with high discrepancy. To measure the fit, normally we look at residuals which measures how close a predicted value is to the actual value. We already now that point 8 has high leverage, but the line of best fit is actually pretty close to its predicted value (see below, panel I). By simply looking at the residuals (panel II), point 8 is not further away that other points. Of course, if you plotted the residuals, you should still notice something is off. For example, they are not normally distributed.</p>
+<p><img alt="" src="figure/outlier-influence-identification/unnamed-chunk-8-1.png"></p>
+<p>Instead, we can look at <em>studentized residuals</em>. Studentized residuals are calculated by fitting a model without the case for which the residual is calculated, and then scaling the resulting residual ($E_i$) by an estimate of the standard deviation of the residuals ($S_{E(-i)}$) and the point's hat value ($h_i$):</p>
+<p>$$\begin{align}
+E_{i}^{*} = \frac{E_i}{S_{E(-i)}\sqrt{1-h_i}} \end{align}$$</p>
+<p>Let's calculate the studentized residual for our test data by hand. Remember that in this case, the 8th data point is the one we're interested in:</p>
+<div class="highlight"><pre><span></span><span class="c1"># model excluding point 8</span>
+mod.pubs.red <span class="o">=</span> lm<span class="p">(</span>y<span class="o">~</span>x<span class="p">,</span> data<span class="o">=</span>pubs<span class="p">[</span><span class="m">-8</span><span class="p">,])</span> 
+
+<span class="c1"># residual for data point in original model</span>
+Ei <span class="o">=</span> <span class="kp">as.numeric</span><span class="p">(</span>residuals<span class="p">(</span>mod.pubs<span class="p">)[</span><span class="m">8</span><span class="p">])</span>
+
+<span class="c1"># estimate of sigma (standard deviation) for residuals</span>
+S_E <span class="o">=</span> <span class="kp">summary</span><span class="p">(</span>mod.pubs.red<span class="p">)</span><span class="o">$</span>sigma
+
+<span class="c1"># hatvalue for point 8</span>
+hi <span class="o">=</span> <span class="kp">as.numeric</span><span class="p">(</span>hatvalues<span class="p">(</span>mod.pubs<span class="p">)[</span><span class="m">8</span><span class="p">])</span>
+
+<span class="c1"># putting it together</span>
+Estar <span class="o">=</span> Ei<span class="o">/</span><span class="p">(</span>S_E<span class="o">*</span><span class="kp">sqrt</span><span class="p">(</span><span class="m">1</span><span class="o">-</span>hi<span class="p">))</span>
+Estar
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>## [1] -2.447433
+</pre></div>
+
+
+<p>Of course, you can also just let R do the maths by calling <code>rstudent</code> on the original model:</p>
+<div class="highlight"><pre><span></span>stud.res <span class="o">=</span> rstudent<span class="p">(</span>mod.pubs<span class="p">)</span>
+<span class="kp">as.numeric</span><span class="p">(</span>stud.res<span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>## [1]  -1.6276530  -0.8807533  -0.4470375   0.0407595   0.5634649   1.1148286
+## [7]   1.6812726 -54.5283362
+</pre></div>
+
+
+<p>Note that the last value is the same as the one we calculated by hand! Let's compare the residuals and the studentized residuals in plots side by side:</p>
+<p><img alt="" src="figure/outlier-influence-identification/unnamed-chunk-11-1.png"></p>
+<p>The studentized residuals reveal clearly that point 8 has a high discrepancy, while this was not possible to see from the normal residual plots.</p>
+<p>Because studentized residuals follow a $t$-distribution, we could apply significance tests or simply look at values that exceed the 95% confidence interval, that is, values that are not between $-1.96$ and $+1.96$. In our example, our curious data point is clearly beyond that 95% confidence interval. However, keep in mind that just because a value is beyond those cut-offs, doesn't mean it's necessarily a <em>bad</em> data point. </p>
+<p>You might also come across something called <em>standardized residuals</em>. These are simply divided by the standard deviation, and do not follow a $t$-distribution and thus aren't quite as useful.</p>
+<h2><strong>Assessing influence</strong></h2>
+<p>We have now seen measures for both assessing leverage and discrepancy, but we know that this doesn't necessarily translate into having high influence (however, you should still examine cases with high leverage and discrepancy). As our data point of interest has both high leverage and discrepancy, it should also have high influence. We'll use something called <em>DFFITS</em> which relies on the studentized residuals to assess influence. A similar measure is <em>Cook's</em> $d$, which instead is based on standardized residuals. Another measure we won't go into are <em>DFBETAS</em>, which measures the influence on each individual parameter, instead of the overall model.</p>
+<p>DFFITS measures the difference between the predicted values for model with and model without that case (for all cases and all parameters). If a case is not influential, its DFFITS value is close to zero. If it is influential, the change in predicted value ($\hat{y}$) is high. We can calculate DFFITS for a point by scaling its studentized residual by its hat value:</p>
+<p>$$\begin{align}
+DFFITS_{i} = E_{i}^{*}\sqrt{\frac{h_i}{1-h_i}}
+\end{align}$$</p>
+<p>Thus, DFFit combines both leverage and discrepancy, and gives you a measure of influence. A common cutoff for DFFITS values is $|DFFITS_i| &gt; 2 \sqrt{\frac{k+1}{n-k-1}}$. </p>
+<p>As the formula for DFFITS is rather easy, we won't go through the trouble of calculating it by hand. Rather, we can just call the <code>dffits</code> function in R:</p>
+<div class="highlight"><pre><span></span><span class="kp">as.numeric</span><span class="p">(</span>dffits<span class="p">(</span>mod.pubs<span class="p">))</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>## [1]   -0.76616892   -0.39269568   -0.18983374    0.01659741    0.22182831
+## [6]    0.42838046    0.63728625 -306.40556939
+</pre></div>
+
+
+<p>The last value, for point 8, is very large! Unsurprisingly, having a large discrepancy and leverage value resulted in a large influence value too. </p>
+<h2><strong>Putting it all together: Influence plots</strong></h2>
+<p>While I've mentioned common cut-off values for all the measures, bear in mind that you should never blindly rely on these, but rather take into account all three measures we talked about and the overall nature of the data. In our example, data point 8 exerts quite a high influence, but does that mean we should exclude it from our model? It turns out that the borough this point represents is the City of London, a small borough with many of commuters. These commuters like to have to drink after work, which explains the large number of pubs. However, as there aren't as many residents, the number of deaths is not much larger than in the other boroughs. This means we shouldn't necessarily simply exclude it from our data, but look for explanations for why this case is different than the rest (common: typos!).</p>
+<p>To look at all three measures at the same time, I recommend plotting the hat-values against the studentized residuals. The size of each point represents $DFFITS_i$. The resulting plot for the linear model applied to our example data is below. Hat-values are shown on the $x$-axis, and the cut-off of the hat-values is shown by the vertical line. Points to the right of this (in the shaded area) can be considered worthy of investigation. The $y$-axis shows the studentized residuals, and horizontal lines denote the 95% confidence interval. Again, points in the shaded area are worthy of being investigated. The size of each points represents that values DFFITS value, with values over the cutoff marked in red.</p>
+<p><img alt="" src="figure/outlier-influence-identification/unnamed-chunk-14-1.png"></p>
+<p>We can see that most points are in the white area, meaning that they do not show any concern. However, point 8 is different for all three values - something we've already discovered. </p>
+<p>While I wrote my own function in R using <code>ggplot</code>, you can also use the <code>influencePlot</code> function in the <code>car</code> package and call it on your regression model directly. However, this version shows Cook's $d$ instead of DFFIT in the point size, but the interpretation remains the same. The function also spews out noteworthy points as well as their influence metrics.</p>
+<div class="highlight"><pre><span></span><span class="kn">library</span><span class="p">(</span>car<span class="p">)</span>
+influencePlot<span class="p">(</span>mod.pubs<span class="p">)</span>
+</pre></div>
+
+
+<p><img alt="" src="figure/outlier-influence-identification/unnamed-chunk-15-1.png"></p>
+<div class="highlight"><pre><span></span>##     StudRes      Hat    CookD
+## 8 -54.52834 0.969302 94.56717
+</pre></div>
+
+
+<p>Let's revisit our three plots from the beginning, which showed high leverage, high discrepancy and high influence respectively. How would influence plots look like for these data? </p>
+<p><img alt="" src="figure/outlier-influence-identification/unnamed-chunk-16-1.png"></p>
+<p>I hope you can make sense of these plots after reading this tutorial and identify the points. And again, bear in mind that especially for low sample data, the cut-offs are only a recommendation, and not justification to delete data points.</p>
+<p>There's plenty more to model diagnostics than I have gone over in this tutorial, but hopefully you have a better understanding of influential data points and the relationship between leverage and discrepancy. Using the example data, you should be able to walk through the steps in this tutorial, and then apply the methods to your own data! If you'd like to know more, an excellent resource is John Fox's <a href="http://socserv.socsci.mcmaster.ca/jfox/Courses/Brazil-2009/index.html">website on regression diagnostics</a>, as well as the two books linked below.</p>
+<h2><strong>References</strong></h2>
+<p><a name=bib-Faraway2005></a><a href="#cite-Faraway2005">[1]</a> J. J.
+Faraway. <em>Linear Models with R</em>. Boca Raton: Taylor and Francis,
+2005.</p>
+<p><a name=bib-Field2012></a><a href="#cite-Faraway2005">[2]</a> A. Field, J. Miles and Z. Field. <em>Discovering Statistics Using R</em>. London and Thousand Oaks, CA: Sage, 2012.</p>                </article>
+            </aside><!-- /#featured -->
+        <section id="extras" class="body">
+                <div class="social">
+                        <h2>social</h2>
+                        <ul>
+                            <li><a href="/feeds/all.atom.xml" type="application/atom+xml" rel="alternate">atom feed</a></li>
+
+                        </ul>
+                </div><!-- /.social -->
+        </section><!-- /#extras -->
+
+        <footer id="contentinfo" class="body">
+                <address id="about" class="vcard body">
+                Proudly powered by <a href="http://getpelican.com/">Pelican</a>, which takes great advantage of <a href="http://python.org">Python</a>.
+                </address><!-- /#about -->
+
+                <p>The theme is by <a href="http://coding.smashingmagazine.com/2009/08/04/designing-a-html-5-layout-from-scratch/">Smashing Magazine</a>, thanks!</p>
+        </footer><!-- /#contentinfo -->
+
+</body>
+</html>

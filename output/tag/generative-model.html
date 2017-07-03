@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+        <meta charset="utf-8" />
+        <title>A Pelican Blog - generative model</title>
+        <link rel="stylesheet" href="/theme/css/main.css" />
+        <link href="/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="A Pelican Blog Atom Feed" />
+
+        <!--[if IE]>
+            <script src="https://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+        <![endif]-->
+</head>
+
+<body id="index" class="home">
+        <header id="banner" class="body">
+                <h1><a href="/">A Pelican Blog </a></h1>
+                <nav><ul>
+                    <li><a href="/pages/about.html">About</a></li>
+                    <li><a href="/pages/publications.html">Publications</a></li>
+                    <li><a href="/pages/insight-project.html">Insight Project</a></li>
+                    <li><a href="/pages/resources.html">Resources</a></li>
+                    <li><a href="/category/misc.html">misc</a></li>
+                </ul></nav>
+        </header><!-- /#banner -->
+
+            <aside id="featured" class="body">
+                <article>
+                    <h1 class="entry-title"><a href="/lda-generation-R.html">Understanding the generative nature of LDA with R</a></h1>
+<footer class="post-info">
+        <abbr class="published" title="2015-12-11T00:00:00+00:00">
+                Published: Fri 11 December 2015
+        </abbr>
+
+<p>In <a href="/category/misc.html">misc</a>.</p>
+<p>tags: <a href="/tag/lda.html">LDA</a> <a href="/tag/generative-model.html">generative model</a> <a href="/tag/r.html">R</a> </p>
+</footer><!-- /.post-info --><p>Topic modeling is a suite of algorithms that discover latent topics in large corpora of texts. To better understand what topic modeling does, I'll explain the conceptual background behind the algorithm(s). Topic modeling finds topics in a document that summarize the document in a "compressed" manner - as a weighted combination of topics. Simply put, it finds the the semantic <em>gist</em> of a document. For example, imagine a newspaper: Traditionally, the articles within one issue cover different topics, such as sports, economics and foreign relations. In a newspaper, these topics are usually given to us, by sections and heading. If the headings are not there, we can manually examine the articles to find out to which category they belong. Even if you have little knowledge of specific sports, you will still be able to recognize an article about the NFL as such. But now imagine that instead of one newspaper issue, you have millions - it is impossible to discover all topics by hand. This is where topic modeling comes in! It can automatically discover these topics for you, without the need to manually examine each and every article. But how does it do it?</p>
+<p>In this blog post, I will focus on the most basic form of topic modeling, called <em>Latent Dirichlet Allocation</em> (LDA), first proposed by <a name=cite-Blei_2003></a><a href="#bib-Blei_2003">Blei, Ng, and Jordan (2003)</a> (for an accessible review, see <a name=cite-Blei_2012></a>(<a href="http://dx.doi.org/10.1145/2133806.2133826">Blei, 2012</a>)). Multiple algorithms have been built on top of LDA now, extending it to various other uses. In LDA, each document is given a distribution over topics, such that some topics are more likely to be contained in a given document than others. Each document thus belongs to more than one topic, but to a different degree. In turn, each topic is represented by a distribution over terms (words), following the same principle. A document is composed of topics, and each topic is composed of terms. </p>
+<p>To better understand this, let me explain how LDA thinks documents are generated. To generate a document, sample a topic distribution that represents the probability each topics appears in that document. For each word in the document, assign it a topic from that topic distribution, and then draw a term from the term distribution for that topic. Of course, in reality we do not write articles like that - but it works really well for the discovery of topics. In the next sections, I'll walk through these steps point by point and go into more detail on how these distributions are generated, including R code.</p>
+<h2><strong>Topic Distributions</strong></h2>
+<p>LDA uses a Dirichlet distribution to generate multinomial distributions over topics. A <a href="https://en.wikipedia.org/wiki/Dirichlet_distribution">dirichlet distribtion</a> is a distribution over distributions, that is, instead of a single value, you get back a whole distribution for each sample drawn. The Dirichlet distribution has a parameter $\alpha$ that influences how this distribution sample looks like. For a practical example, imagine we want to generate a newspaper article, and want to assign it some topics. We can do this easily with this Dirichlet distribution in R, using the <code>rdirichlet</code> function in the <code>MCMCpack</code> package (other packages also provide this function). We will first set the $\alpha$ parameter to <code>.1</code>, and then explore the effects of varying it a little later. We also have to specify how many topics we want - let's use 10 to not lose track. In application of LDA this tends to be much higher, depending on your data. The number of topics is denoted by $K$. We only want one document for now, so we set $N$=1. When calling <code>rdirichlet</code>, you need to specify how many draws you want (here, $N$), and the $\alpha$ parameter for each topic. Each topic here has the same $\alpha$, although that could vary. </p>
+<div class="highlight"><pre><span></span><span class="kn">library</span><span class="p">(</span>MCMCpack<span class="p">)</span>
+<span class="kn">library</span><span class="p">(</span>pander<span class="p">)</span> 
+<span class="kn">library</span><span class="p">(</span>dplyr<span class="p">)</span>
+
+<span class="kp">set.seed</span><span class="p">(</span><span class="m">2015</span><span class="p">)</span> <span class="c1"># for reproducibility</span>
+
+alpha <span class="o">=</span> <span class="m">.1</span>
+N <span class="o">=</span> <span class="m">1</span>
+K <span class="o">=</span> <span class="m">10</span>
+x <span class="o">=</span> rdirichlet<span class="p">(</span>N<span class="p">,</span> <span class="kp">rep</span><span class="p">(</span>alpha<span class="p">,</span> K<span class="p">))</span>  <span class="o">%&gt;%</span> <span class="kp">as.numeric</span><span class="p">()</span>
+
+x
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>##  [1] 3.701350e-12 2.868758e-05 1.328463e-08 4.964977e-03 6.993802e-02
+##  [6] 1.497147e-01 7.943219e-15 6.473852e-01 1.279675e-01 8.875518e-07
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>plot<span class="p">(</span>x<span class="p">,</span> ylab<span class="o">=</span><span class="s">&quot;Probability&quot;</span><span class="p">)</span>
+</pre></div>
+
+
+<p><img alt="" src="figure/lda-generation-R/unnamed-chunk-2-1.png"></p>
+<p>By visualizing the distribution, we can see that six values (topics) are close to zero - the document does not contain these. One topic, number 8, is however represented to a high degree. This is the main topic of the document, while others are represented to a smaller degree. </p>
+<p>The $\alpha$ parameters influences the shape of this distribution, more specifically, how many topics will have a (relatively) high value. In this example, it is fairly low, meaning that one topic has the majority of the probability. If we set the parameter, the distribution will be more even. We can illustrate this easily:</p>
+<div class="highlight"><pre><span></span><span class="kn">library</span><span class="p">(</span>ggplot2<span class="p">)</span>
+
+alpha <span class="o">=</span> <span class="kt">c</span><span class="p">(</span><span class="m">0.1</span><span class="p">,</span> <span class="m">0.5</span><span class="p">,</span> <span class="m">1</span><span class="p">,</span> <span class="m">10</span><span class="p">,</span> <span class="m">100</span><span class="p">,</span> <span class="m">1000</span><span class="p">)</span> <span class="c1"># alphas to be tested</span>
+<span class="c1"># get distribution for each apha</span>
+ds <span class="o">=</span> <span class="kp">lapply</span><span class="p">(</span>alpha<span class="p">,</span> <span class="kr">function</span><span class="p">(</span>a<span class="p">)</span> rdirichlet<span class="p">(</span>N<span class="p">,</span> <span class="kp">rep</span><span class="p">(</span>a<span class="p">,</span> K<span class="p">)))</span> 
+<span class="c1"># create a data frame for plotting</span>
+df <span class="o">=</span> ds <span class="o">%&gt;%</span> <span class="kp">unlist</span><span class="p">()</span> <span class="o">%&gt;%</span> 
+            <span class="kp">as.data.frame</span><span class="p">()</span> <span class="o">%&gt;%</span> 
+            mutate<span class="p">(</span>alpha <span class="o">=</span> <span class="kp">rep</span><span class="p">(</span>alpha<span class="p">,</span> each<span class="o">=</span>K<span class="p">))</span> 
+df<span class="o">$</span>topic <span class="o">=</span>  <span class="kp">as.factor</span><span class="p">(</span><span class="kp">rep</span><span class="p">(</span><span class="kt">c</span><span class="p">(</span><span class="m">1</span><span class="o">:</span>K<span class="p">),</span> <span class="kp">length</span><span class="p">(</span>alpha<span class="p">)))</span>
+<span class="kp">names</span><span class="p">(</span>df<span class="p">)[</span><span class="m">1</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;value&quot;</span>
+df<span class="o">$</span>alpha <span class="o">=</span> <span class="kp">as.character</span><span class="p">(</span>df<span class="o">$</span>alpha<span class="p">)</span>
+
+<span class="c1"># plot the distributions, by alpha value</span>
+ggplot<span class="p">(</span>df<span class="p">,</span> aes<span class="p">(</span>x<span class="o">=</span>topic<span class="p">,</span> y<span class="o">=</span>value<span class="p">))</span> <span class="o">+</span> 
+  geom_point<span class="p">(</span>size<span class="o">=</span><span class="m">3</span><span class="p">)</span> <span class="o">+</span> 
+  facet_wrap<span class="p">(</span><span class="o">~</span>alpha<span class="p">)</span>
+</pre></div>
+
+
+<p><img alt="" src="figure/lda-generation-R/unnamed-chunk-3-1.png"></p>
+<p>We can see that the higher the $\alpha$ parameter, the more even the standard distribution. A value of 1000 would make very little sense for LDA - each topic is represented equally, resulting in an incoherent document. Rather, the value of $\alpha$ is often fixed at either $0.1$ or $1/K$ to create distributions were some topics are highly probable. Some implementations also allow you to vary the parameter individually for each topic, although this is not as common.</p>
+<p>We know now how can can generate a topic distribution for a document. We will follow a similar procedure for the word distributions. Remember, each of the ten topics has a term distribution associated with it. As this distribution is also sampled from a Dirichlet, the procedure will be very similar.</p>
+<h2><strong>Term Distributions</strong></h2>
+<p>Again, we have a parameter to be used with the Dirichlet distribution, this time we'll call it $\beta$. This parameter will work in the same way as $\alpha$ did for the topic distribution. Let's first create a sample corpus of terms we can use to create the distribution over. I used the <code>rcorpora</code> package, which comes with a list of words for different domains, such as birds, proverbs and political parties. We'll use Shakespeare words here.</p>
+<div class="highlight"><pre><span></span><span class="kn">library</span><span class="p">(</span>rcorpora<span class="p">)</span>
+vocab <span class="o">=</span> corpora<span class="p">(</span><span class="s">&quot;words/literature/shakespeare_words&quot;</span><span class="p">)</span><span class="o">$</span>words
+<span class="kp">head</span><span class="p">(</span>vocab<span class="p">)</span> <span class="c1"># some example words</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>## [1] &quot;abstemious&quot;    &quot;academe&quot;       &quot;accommodation&quot; &quot;accused&quot;      
+## [5] &quot;addiction&quot;     &quot;admirable&quot;
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="kp">length</span><span class="p">(</span>vocab<span class="p">)</span> <span class="c1"># length of the vocabulary</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>## [1] 320
+</pre></div>
+
+
+<p>Now let's create a distribution over these words, as not all words are equally likely to pop up in each topic. Of course, this is just a toy example - our real vocabulary is not just restricted to these 320 words Shakespeare used. In LDA, this term distribution is typically denoted by $\phi$.</p>
+<div class="highlight"><pre><span></span>sizeVocab <span class="o">=</span> <span class="kp">length</span><span class="p">(</span>vocab<span class="p">)</span>
+beta <span class="o">=</span> <span class="m">.1</span>
+phi <span class="o">=</span> rdirichlet<span class="p">(</span>K<span class="p">,</span> <span class="kp">rep</span><span class="p">(</span><span class="kp">beta</span><span class="p">,</span> sizeVocab<span class="p">))</span>
+<span class="c1"># Plotting distribution for the first topic</span>
+plot<span class="p">(</span>phi<span class="p">[</span><span class="m">1</span><span class="p">,]</span> <span class="o">%&gt;%</span> <span class="kp">as.numeric</span><span class="p">())</span>
+</pre></div>
+
+
+<p><img alt="" src="figure/lda-generation-R/unnamed-chunk-5-1.png"></p>
+<div class="highlight"><pre><span></span><span class="kp">dim</span><span class="p">(</span>phi<span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>## [1]  10 320
+</pre></div>
+
+
+<p>The plot shows the term distribution for the first topic: Again, we can see that some terms have a high probability of occurring, while the majority hover at the low values. </p>
+<p>The dimensionality of <code>phi</code> show that for each of the 10 topics, we get one value for each of the 320 words. That means that each word has some probability of occurring in each topics, although often this probability is approximating zero.</p>
+<h2><strong>Generating documents</strong></h2>
+<p>Now that we know how these two distributions are used, we can generate documents from scratch. Of course, since our vocabulary is just a list of words, we will get incoherent documents back that are not particular insightful. But remember, this is just a toy model. When you use real data, the topics should be coherent.</p>
+<p>Let's first set some additional parameters we need to generate these documents. First, we have to set the number of documents we want to generate. Let's choose $N=5$. We also have to decide how long, that is, how many terms should be in each document. Let's set $NumWords=20$. This is rather low number, but this way we can still analyze the documents by hand. Let's keep $K=10$, and the parameters $\alpha=50/K=5$ and $\beta=.1$. We will use the vocabulary from Shakespeare from the above example.</p>
+<div class="highlight"><pre><span></span>N <span class="o">=</span> <span class="m">5</span>
+NumWords <span class="o">=</span> <span class="m">20</span>
+
+K <span class="o">=</span> <span class="m">10</span>
+alpha <span class="o">=</span> <span class="m">1</span><span class="o">/</span>K
+beta <span class="o">=</span> <span class="m">.1</span>
+
+sizeVocab <span class="o">=</span> <span class="kp">length</span><span class="p">(</span>vocab<span class="p">)</span>
+</pre></div>
+
+
+<p>Once we've set all the parameters, let's create the two distributions, for topics $\theta$ and terms $\phi$ respectively.</p>
+<div class="highlight"><pre><span></span>theta <span class="o">=</span> rdirichlet<span class="p">(</span>N<span class="p">,</span> <span class="kp">rep</span><span class="p">(</span>alpha<span class="p">,</span> K<span class="p">))</span>
+<span class="kp">dim</span><span class="p">(</span>theta<span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>## [1]  5 10
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>phi <span class="o">=</span> rdirichlet<span class="p">(</span>K<span class="p">,</span> <span class="kp">rep</span><span class="p">(</span><span class="kp">beta</span><span class="p">,</span> sizeVocab<span class="p">))</span>
+<span class="kp">dim</span><span class="p">(</span>phi<span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>## [1]  10 320
+</pre></div>
+
+
+<p>Now remember, to generate a document, we first have to allocate topics to each word in each document. Then we have to sample a terms from that document, and concatenate those words to create the document. Let's do this step by step.</p>
+<div class="highlight"><pre><span></span>i <span class="o">=</span> <span class="m">1</span>
+topics <span class="o">=</span> <span class="kp">sample</span><span class="p">(</span><span class="m">1</span><span class="o">:</span>K<span class="p">,</span>
+          size <span class="o">=</span> NumWords<span class="p">,</span> 
+          replace <span class="o">=</span> <span class="kc">TRUE</span><span class="p">,</span> 
+          prob <span class="o">=</span> theta<span class="p">[</span>i<span class="p">,])</span> 
+topics
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>##  [1] 5 5 5 5 5 5 5 5 7 5 5 5 5 5 5 5 7 5 5 5
+</pre></div>
+
+
+<p>Our first document ($i=1$) consists mainly of terms allocated to either topic number 5 or 7. By inspecting the $theta$ distribution for that row, we can see that this reflects the distribution:</p>
+<div class="highlight"><pre><span></span>theta<span class="p">[</span><span class="m">1</span><span class="p">,]</span> <span class="o">%&gt;%</span> plot<span class="p">()</span>
+</pre></div>
+
+
+<p><img alt="" src="figure/lda-generation-R/unnamed-chunk-9-1.png"></p>
+<p>Now that we have a topic, let's sample a word from the term distribution $\phi$. We test this only for the first topic.</p>
+<div class="highlight"><pre><span></span>j <span class="o">=</span> topics<span class="p">[</span><span class="m">1</span><span class="p">]</span>  <span class="c1"># first topic</span>
+term <span class="o">=</span> <span class="kp">sample</span><span class="p">(</span>vocab<span class="p">,</span> 
+              size <span class="o">=</span> <span class="m">1</span><span class="p">,</span> 
+              prob <span class="o">=</span> phi<span class="p">[</span>j<span class="p">,])</span>
+term
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>## [1] &quot;enrapt&quot;
+</pre></div>
+
+
+<p>Alright, we got our first term! To generate the whole document, we have to repeat the steps for each term-position in the document. To generate all documents, we have to do all these steps for all terms in each document. We could achieve this by writing a for-loop, but it's easier using <code>lapply</code> together with functions. Let's first wrap the commands for topic and term generation in functions.</p>
+<div class="highlight"><pre><span></span><span class="c1"># takes a document i and generates a topic distribution</span>
+generateTopics <span class="o">=</span> <span class="kr">function</span><span class="p">(</span>i<span class="p">){</span>
+  topics <span class="o">=</span> <span class="kp">sample</span><span class="p">(</span><span class="m">1</span><span class="o">:</span>K<span class="p">,</span>
+          size <span class="o">=</span> NumWords<span class="p">,</span> 
+          replace <span class="o">=</span> <span class="kc">TRUE</span><span class="p">,</span> 
+          prob <span class="o">=</span> theta<span class="p">[</span>i<span class="p">,])</span> 
+  topics
+<span class="p">}</span>
+
+<span class="c1"># takes a topic j and samples a term from its term distribution</span>
+generateWord <span class="o">=</span> <span class="kr">function</span><span class="p">(</span>j<span class="p">){</span>
+  term <span class="o">=</span> <span class="kp">sample</span><span class="p">(</span>vocab<span class="p">,</span> 
+                size <span class="o">=</span> <span class="m">1</span><span class="p">,</span> 
+                prob <span class="o">=</span> phi<span class="p">[</span>j<span class="p">,])</span>
+  term
+<span class="p">}</span>
+
+generateTopics<span class="p">(</span>i<span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>##  [1] 5 7 5 5 7 5 5 7 5 5 7 5 5 5 5 5 5 5 5 5
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>generateWord<span class="p">(</span>j<span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>## [1] &quot;spectacled&quot;
+</pre></div>
+
+
+<p>Because we have to iterate over the topics generated by <code>generateTopics</code>, we'll write another function that will call <code>generateWord</code> on each topic. We can also implement a small command that will string together all the terms to make the output look a little nicer.</p>
+<div class="highlight"><pre><span></span>generateDocument <span class="o">=</span> <span class="kr">function</span><span class="p">(</span>d<span class="p">){</span>
+  topics <span class="o">=</span> generateTopics<span class="p">(</span>d<span class="p">)</span> <span class="c1"># d is the current document</span>
+  terms <span class="o">=</span> <span class="kp">lapply</span><span class="p">(</span>topics<span class="p">,</span> generateWord<span class="p">)</span> <span class="o">%&gt;%</span> <span class="kp">unlist</span><span class="p">()</span> <span class="c1"># for each topic, generate a word</span>
+  document <span class="o">=</span> terms <span class="o">%&gt;%</span> <span class="kp">paste</span><span class="p">(</span><span class="m">.</span><span class="p">,</span> collapse <span class="o">=</span> <span class="s">&quot; &quot;</span><span class="p">)</span> <span class="c1"># string those together</span>
+  document
+<span class="p">}</span>
+documents <span class="o">=</span> <span class="kp">lapply</span><span class="p">(</span><span class="m">1</span><span class="o">:</span>N<span class="p">,</span> generateDocument<span class="p">)</span>
+documents  <span class="o">%&gt;%</span> pander<span class="p">()</span>
+</pre></div>
+
+
+<ul>
+<li>housekeeping housekeeping new-fangled far-off gust to enmesh nimble-footed hob-nails belongings lonely  far-off revolting far-off shooting star housekeeping perusal housekeeping money's worth bold-faced urging</li>
+<li>long-legged to besmirch to drug hunchbacked rumination to drug dishearten gnarled bottled excitement  hoodwinked schoolboy tranquil schoolboy to dwindle schoolboy tardily mountaineer title page to lapse</li>
+<li>shooting star critical eyeball foppish posture gnarled foppish reprieve freezing to submerge enrapt apostrophe apostrophe day's work inauspicious savagery revolting long-legged to gossip to uncurl</li>
+<li>revolting fitful bump consanguineous to drug tardiness luggage to torture  critic varied to submerge consanguineous critical unappeased to undress new-fallen perplex hobnob flawed deafening</li>
+<li>to negotiate stillborn engagement excitement  to uncurl savage malignancy to swagger juiced courtship juiced overgrowth bandit money's worth posture to negotiate to humor malignancy shudder to forward</li>
+</ul>
+<!-- end of list -->
+
+<p>The documents were successfully generated based on the term and topic distribution. Of course, they're all nonsense. Neither our vocabulary or the bag-of-words assumption, where order doesn't matter, reflect reality. Nevertheless, this procedure is the underlying idea behind the success of LDA.</p>
+<h2><strong>Inference</strong></h2>
+<p>Alright, we generated some documents. But how does that help us in analyzing a corpus of text? In such a case, it's the reverse situation: We have our documents, but have no idea what the topic distribution $\theta$ and the term distribution $\phi$ is. This is where the real magic comes in. LDA can leverage this generative idea to infer the two distributions. Several implementations exist to do so, including variational inference and <a href="https://en.wikipedia.org/wiki/Gibbs_sampling">Gibbs sampling</a>. Once the topic distributions and terms are inferred, it is possible to compare documents and topics to each other, as well as track changes over time. I might post another article in the near future on how this inference works in more detail - if you're interested, read the original Blei et al. paper, or this paper using Gibbs sampling <a name=cite-Griffiths_2004></a>(<a href="http://dx.doi.org/10.1073/pnas.0307752101">Griffiths and Steyvers, 2004</a>).</p>
+<h2><strong>Summary</strong></h2>
+<p>The blog post focused on the generative nature of LDA. LDA uses several steps to generate documents:</p>
+<ol>
+<li>For each topic $z$ (where $z$ is from $1$ to $K$) generate a multinomial term distribution $\phi_z$ from a Dirichlet prior $\beta$ to represent which terms are probable in which topics. </li>
+<li>For each document $d$, draw a multinomial topic distribution $\theta_d$ from a Dirichlet prior $\alpha$ to represent which topics are probable in this document.</li>
+<li>For each word $w_{di}$ in document $d$:<ul>
+<li>Draw a topic $z_{di}$ from $\theta_d$</li>
+<li>Draw a word $w_{di}$ from $\phi_{z_{di}}$</li>
+</ul>
+</li>
+</ol>
+<p>I hope the examples (although silly) helped explain the generative process underlying LDA, as well as the conceptual reasoning behind it. While the generative process does not actually work well to generate documents, the assumptions produce great results by inferring the posterior distributions $\theta$ and $\phi$. It has been used in a wide range of applications such as in the digital humanities, for instance, in analyzing classical scholarship <a name=cite-Mimno_2012></a>(<a href="http://dx.doi.org/10.1145/2160165.2160168">Mimno, 2012</a>), and scientometrics, for instance, tracing the history of topics in computer science <a name=cite-Hall_2008></a>(<a href="http://dx.doi.org/10.3115/1613715.1613763">Hall, Jurafsky, and Manning, 2008</a>). If you are interested in applying LDA to one of your own data sets, check out the <a href="https://cran.r-project.org/web/packages/topicmodels/index.html">topicmodels package</a> in R <a name=cite-Gr_n_2011></a>(<a href="http://dx.doi.org/10.18637/jss.v040.i13">Grün and Hornik, 2011</a>). It's fairly straightforward to use, so check out the paper and the vignettes! If you can wait, I'm planning on writing another blog post on running LDA and some ways to analyze the results shortly.</p>
+<h2><strong>References</strong></h2>
+<p><a name=bib-Blei_2012></a><a href="#cite-Blei_2012">[1]</a> D. M. Blei.
+"Probabilistic topic models". In: <em>Communications of the ACM</em> 55.4
+(Apr. 2012), p. 77. DOI:
+<a href="http://dx.doi.org/10.1145/2133806.2133826">10.1145/2133806.2133826</a>.
+URL:
+<a href="http://dx.doi.org/10.1145/2133806.2133826">http://dx.doi.org/10.1145/2133806.2133826</a>.</p>
+<p><a name=bib-Blei_2003></a><a href="#cite-Blei_2003">[2]</a> D. Blei, A. Ng
+and M. Jordan. "Latent Dirichlet Allocation". In: <em>Journal of
+Machine Learning Research</em> (2003).</p>
+<p><a name=bib-Griffiths_2004></a><a href="#cite-Griffiths_2004">[3]</a> T. L.
+Griffiths and M. Steyvers. "Finding scientific topics". In:
+<em>Proceedings of the National Academy of Sciences</em> 101.Supplement 1
+(Feb. 2004), pp. 5228-5235. DOI:
+<a href="http://dx.doi.org/10.1073/pnas.0307752101">10.1073/pnas.0307752101</a>.
+URL:
+<a href="http://dx.doi.org/10.1073/pnas.0307752101">http://dx.doi.org/10.1073/pnas.0307752101</a>.</p>
+<p><a name=bib-Gr_n_2011></a><a href="#cite-Gr_n_2011">[4]</a> B. Grün and K.
+Hornik. " topicmodels : An R Package for Fitting Topic Models ".
+In: <em>Journal of Statistical Software</em> 40.13 (2011). DOI:
+<a href="http://dx.doi.org/10.18637/jss.v040.i13">10.18637/jss.v040.i13</a>.
+URL:
+<a href="http://dx.doi.org/10.18637/jss.v040.i13">http://dx.doi.org/10.18637/jss.v040.i13</a>.</p>
+<p><a name=bib-Hall_2008></a><a href="#cite-Hall_2008">[5]</a> D. Hall, D.
+Jurafsky and C. D. Manning. "Studying the history of ideas using
+topic models". In: <em>Proceedings of the Conference on Empirical
+Methods in Natural Language Processing - EMNLP
+\textquotesingle08</em>. Association for Computational Linguistics
+(ACL), 2008. DOI:
+<a href="http://dx.doi.org/10.3115/1613715.1613763">10.3115/1613715.1613763</a>.
+URL:
+<a href="http://dx.doi.org/10.3115/1613715.1613763">http://dx.doi.org/10.3115/1613715.1613763</a>.</p>
+<p><a name=bib-Mimno_2012></a><a href="#cite-Mimno_2012">[6]</a> D. Mimno.
+"Computational historiography". In: <em>J. Comput. Cult. Herit.</em> 5.1
+(Apr. 2012), pp. 1-19. DOI:
+<a href="http://dx.doi.org/10.1145/2160165.2160168">10.1145/2160165.2160168</a>.
+URL:
+<a href="http://dx.doi.org/10.1145/2160165.2160168">http://dx.doi.org/10.1145/2160165.2160168</a>.</p>                </article>
+            </aside><!-- /#featured -->
+        <section id="extras" class="body">
+                <div class="social">
+                        <h2>social</h2>
+                        <ul>
+                            <li><a href="/feeds/all.atom.xml" type="application/atom+xml" rel="alternate">atom feed</a></li>
+
+                        </ul>
+                </div><!-- /.social -->
+        </section><!-- /#extras -->
+
+        <footer id="contentinfo" class="body">
+                <address id="about" class="vcard body">
+                Proudly powered by <a href="http://getpelican.com/">Pelican</a>, which takes great advantage of <a href="http://python.org">Python</a>.
+                </address><!-- /#about -->
+
+                <p>The theme is by <a href="http://coding.smashingmagazine.com/2009/08/04/designing-a-html-5-layout-from-scratch/">Smashing Magazine</a>, thanks!</p>
+        </footer><!-- /#contentinfo -->
+
+</body>
+</html>

@@ -1,0 +1,684 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>A Pelican Blog - misc</title><link href="/" rel="alternate"></link><link href="/feeds/misc.atom.xml" rel="self"></link><id>/</id><updated>2016-05-15T00:00:00+00:00</updated><entry><title>Inferring the posteriors in LDA through Gibbs sampling</title><link href="/lda-gibbs-toy.html" rel="alternate"></link><published>2016-05-15T00:00:00+00:00</published><updated>2016-05-15T00:00:00+00:00</updated><author><name>Till Bergmann</name></author><id>tag:None,2016-05-15:/lda-gibbs-toy.html</id><summary type="html">&lt;p&gt;In my last blog post, which was about a million years ago, I described the generative nature of LDA and left the interferential step open. In this blog post, I will explain one method to calculate estimations of the topic distribution θ and the term distribution ϕ. This approach, first formulated by Griffiths and Steyvers (2004) in the context of LDA, is to use Gibbs sampling, a common algorithm within the Markov Chain Monte Carlo (MCMC) family of sampling algorithms. Before applying Gibbs sampling directly to LDA, I will first give a short introduction to Gibbs sampling more generally.&lt;/p&gt;</summary><content type="html">&lt;p&gt;{% notebook notebooks/lda-gibbs.ipynb %}&lt;/p&gt;</content><category term="Python"></category><category term="Gibbs Sampling"></category><category term="LDA"></category></entry><entry><title>Understanding the generative nature of LDA with R</title><link href="/lda-generation-R.html" rel="alternate"></link><published>2015-12-11T00:00:00+00:00</published><updated>2015-12-11T00:00:00+00:00</updated><author><name></name></author><id>tag:None,2015-12-11:/lda-generation-R.html</id><summary type="html">&lt;p&gt;Topic modeling is a suite of algorithms that discover latent topics in large corpora of texts. To better understand what topic modeling does, I'll explain the conceptual background behind the algorithm(s). Topic modeling finds topics in a document that summarize the document in a "compressed" manner - as a weighted …&lt;/p&gt;</summary><content type="html">&lt;p&gt;Topic modeling is a suite of algorithms that discover latent topics in large corpora of texts. To better understand what topic modeling does, I'll explain the conceptual background behind the algorithm(s). Topic modeling finds topics in a document that summarize the document in a "compressed" manner - as a weighted combination of topics. Simply put, it finds the the semantic &lt;em&gt;gist&lt;/em&gt; of a document. For example, imagine a newspaper: Traditionally, the articles within one issue cover different topics, such as sports, economics and foreign relations. In a newspaper, these topics are usually given to us, by sections and heading. If the headings are not there, we can manually examine the articles to find out to which category they belong. Even if you have little knowledge of specific sports, you will still be able to recognize an article about the NFL as such. But now imagine that instead of one newspaper issue, you have millions - it is impossible to discover all topics by hand. This is where topic modeling comes in! It can automatically discover these topics for you, without the need to manually examine each and every article. But how does it do it?&lt;/p&gt;
+&lt;p&gt;In this blog post, I will focus on the most basic form of topic modeling, called &lt;em&gt;Latent Dirichlet Allocation&lt;/em&gt; (LDA), first proposed by &lt;a name=cite-Blei_2003&gt;&lt;/a&gt;&lt;a href="#bib-Blei_2003"&gt;Blei, Ng, and Jordan (2003)&lt;/a&gt; (for an accessible review, see &lt;a name=cite-Blei_2012&gt;&lt;/a&gt;(&lt;a href="http://dx.doi.org/10.1145/2133806.2133826"&gt;Blei, 2012&lt;/a&gt;)). Multiple algorithms have been built on top of LDA now, extending it to various other uses. In LDA, each document is given a distribution over topics, such that some topics are more likely to be contained in a given document than others. Each document thus belongs to more than one topic, but to a different degree. In turn, each topic is represented by a distribution over terms (words), following the same principle. A document is composed of topics, and each topic is composed of terms. &lt;/p&gt;
+&lt;p&gt;To better understand this, let me explain how LDA thinks documents are generated. To generate a document, sample a topic distribution that represents the probability each topics appears in that document. For each word in the document, assign it a topic from that topic distribution, and then draw a term from the term distribution for that topic. Of course, in reality we do not write articles like that - but it works really well for the discovery of topics. In the next sections, I'll walk through these steps point by point and go into more detail on how these distributions are generated, including R code.&lt;/p&gt;
+&lt;h2&gt;&lt;strong&gt;Topic Distributions&lt;/strong&gt;&lt;/h2&gt;
+&lt;p&gt;LDA uses a Dirichlet distribution to generate multinomial distributions over topics. A &lt;a href="https://en.wikipedia.org/wiki/Dirichlet_distribution"&gt;dirichlet distribtion&lt;/a&gt; is a distribution over distributions, that is, instead of a single value, you get back a whole distribution for each sample drawn. The Dirichlet distribution has a parameter $\alpha$ that influences how this distribution sample looks like. For a practical example, imagine we want to generate a newspaper article, and want to assign it some topics. We can do this easily with this Dirichlet distribution in R, using the &lt;code&gt;rdirichlet&lt;/code&gt; function in the &lt;code&gt;MCMCpack&lt;/code&gt; package (other packages also provide this function). We will first set the $\alpha$ parameter to &lt;code&gt;.1&lt;/code&gt;, and then explore the effects of varying it a little later. We also have to specify how many topics we want - let's use 10 to not lose track. In application of LDA this tends to be much higher, depending on your data. The number of topics is denoted by $K$. We only want one document for now, so we set $N$=1. When calling &lt;code&gt;rdirichlet&lt;/code&gt;, you need to specify how many draws you want (here, $N$), and the $\alpha$ parameter for each topic. Each topic here has the same $\alpha$, although that could vary. &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;library&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;MCMCpack&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="kn"&gt;library&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;pander&lt;span class="p"&gt;)&lt;/span&gt; 
+&lt;span class="kn"&gt;library&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;dplyr&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="kp"&gt;set.seed&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="m"&gt;2015&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="c1"&gt;# for reproducibility&lt;/span&gt;
+
+alpha &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="m"&gt;.1&lt;/span&gt;
+N &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="m"&gt;1&lt;/span&gt;
+K &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="m"&gt;10&lt;/span&gt;
+x &lt;span class="o"&gt;=&lt;/span&gt; rdirichlet&lt;span class="p"&gt;(&lt;/span&gt;N&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="kp"&gt;rep&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;alpha&lt;span class="p"&gt;,&lt;/span&gt; K&lt;span class="p"&gt;))&lt;/span&gt;  &lt;span class="o"&gt;%&amp;gt;%&lt;/span&gt; &lt;span class="kp"&gt;as.numeric&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+
+x
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;##  [1] 3.701350e-12 2.868758e-05 1.328463e-08 4.964977e-03 6.993802e-02
+##  [6] 1.497147e-01 7.943219e-15 6.473852e-01 1.279675e-01 8.875518e-07
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;plot&lt;span class="p"&gt;(&lt;/span&gt;x&lt;span class="p"&gt;,&lt;/span&gt; ylab&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;Probability&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;&lt;img alt="" src="figure/lda-generation-R/unnamed-chunk-2-1.png"&gt;&lt;/p&gt;
+&lt;p&gt;By visualizing the distribution, we can see that six values (topics) are close to zero - the document does not contain these. One topic, number 8, is however represented to a high degree. This is the main topic of the document, while others are represented to a smaller degree. &lt;/p&gt;
+&lt;p&gt;The $\alpha$ parameters influences the shape of this distribution, more specifically, how many topics will have a (relatively) high value. In this example, it is fairly low, meaning that one topic has the majority of the probability. If we set the parameter, the distribution will be more even. We can illustrate this easily:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;library&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;ggplot2&lt;span class="p"&gt;)&lt;/span&gt;
+
+alpha &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kt"&gt;c&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="m"&gt;0.1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="m"&gt;0.5&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="m"&gt;10&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="m"&gt;100&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="m"&gt;1000&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="c1"&gt;# alphas to be tested&lt;/span&gt;
+&lt;span class="c1"&gt;# get distribution for each apha&lt;/span&gt;
+ds &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kp"&gt;lapply&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;alpha&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="kr"&gt;function&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;a&lt;span class="p"&gt;)&lt;/span&gt; rdirichlet&lt;span class="p"&gt;(&lt;/span&gt;N&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="kp"&gt;rep&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;a&lt;span class="p"&gt;,&lt;/span&gt; K&lt;span class="p"&gt;)))&lt;/span&gt; 
+&lt;span class="c1"&gt;# create a data frame for plotting&lt;/span&gt;
+df &lt;span class="o"&gt;=&lt;/span&gt; ds &lt;span class="o"&gt;%&amp;gt;%&lt;/span&gt; &lt;span class="kp"&gt;unlist&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt; &lt;span class="o"&gt;%&amp;gt;%&lt;/span&gt; 
+            &lt;span class="kp"&gt;as.data.frame&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt; &lt;span class="o"&gt;%&amp;gt;%&lt;/span&gt; 
+            mutate&lt;span class="p"&gt;(&lt;/span&gt;alpha &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kp"&gt;rep&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;alpha&lt;span class="p"&gt;,&lt;/span&gt; each&lt;span class="o"&gt;=&lt;/span&gt;K&lt;span class="p"&gt;))&lt;/span&gt; 
+df&lt;span class="o"&gt;$&lt;/span&gt;topic &lt;span class="o"&gt;=&lt;/span&gt;  &lt;span class="kp"&gt;as.factor&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="kp"&gt;rep&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="kt"&gt;c&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;K&lt;span class="p"&gt;),&lt;/span&gt; &lt;span class="kp"&gt;length&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;alpha&lt;span class="p"&gt;)))&lt;/span&gt;
+&lt;span class="kp"&gt;names&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;df&lt;span class="p"&gt;)[&lt;/span&gt;&lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;value&amp;quot;&lt;/span&gt;
+df&lt;span class="o"&gt;$&lt;/span&gt;alpha &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kp"&gt;as.character&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;df&lt;span class="o"&gt;$&lt;/span&gt;alpha&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="c1"&gt;# plot the distributions, by alpha value&lt;/span&gt;
+ggplot&lt;span class="p"&gt;(&lt;/span&gt;df&lt;span class="p"&gt;,&lt;/span&gt; aes&lt;span class="p"&gt;(&lt;/span&gt;x&lt;span class="o"&gt;=&lt;/span&gt;topic&lt;span class="p"&gt;,&lt;/span&gt; y&lt;span class="o"&gt;=&lt;/span&gt;value&lt;span class="p"&gt;))&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; 
+  geom_point&lt;span class="p"&gt;(&lt;/span&gt;size&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="m"&gt;3&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; 
+  facet_wrap&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="o"&gt;~&lt;/span&gt;alpha&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;&lt;img alt="" src="figure/lda-generation-R/unnamed-chunk-3-1.png"&gt;&lt;/p&gt;
+&lt;p&gt;We can see that the higher the $\alpha$ parameter, the more even the standard distribution. A value of 1000 would make very little sense for LDA - each topic is represented equally, resulting in an incoherent document. Rather, the value of $\alpha$ is often fixed at either $0.1$ or $1/K$ to create distributions were some topics are highly probable. Some implementations also allow you to vary the parameter individually for each topic, although this is not as common.&lt;/p&gt;
+&lt;p&gt;We know now how can can generate a topic distribution for a document. We will follow a similar procedure for the word distributions. Remember, each of the ten topics has a term distribution associated with it. As this distribution is also sampled from a Dirichlet, the procedure will be very similar.&lt;/p&gt;
+&lt;h2&gt;&lt;strong&gt;Term Distributions&lt;/strong&gt;&lt;/h2&gt;
+&lt;p&gt;Again, we have a parameter to be used with the Dirichlet distribution, this time we'll call it $\beta$. This parameter will work in the same way as $\alpha$ did for the topic distribution. Let's first create a sample corpus of terms we can use to create the distribution over. I used the &lt;code&gt;rcorpora&lt;/code&gt; package, which comes with a list of words for different domains, such as birds, proverbs and political parties. We'll use Shakespeare words here.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;library&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;rcorpora&lt;span class="p"&gt;)&lt;/span&gt;
+vocab &lt;span class="o"&gt;=&lt;/span&gt; corpora&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;words/literature/shakespeare_words&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="o"&gt;$&lt;/span&gt;words
+&lt;span class="kp"&gt;head&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;vocab&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="c1"&gt;# some example words&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;## [1] &amp;quot;abstemious&amp;quot;    &amp;quot;academe&amp;quot;       &amp;quot;accommodation&amp;quot; &amp;quot;accused&amp;quot;      
+## [5] &amp;quot;addiction&amp;quot;     &amp;quot;admirable&amp;quot;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kp"&gt;length&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;vocab&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="c1"&gt;# length of the vocabulary&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;## [1] 320
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Now let's create a distribution over these words, as not all words are equally likely to pop up in each topic. Of course, this is just a toy example - our real vocabulary is not just restricted to these 320 words Shakespeare used. In LDA, this term distribution is typically denoted by $\phi$.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;sizeVocab &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kp"&gt;length&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;vocab&lt;span class="p"&gt;)&lt;/span&gt;
+beta &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="m"&gt;.1&lt;/span&gt;
+phi &lt;span class="o"&gt;=&lt;/span&gt; rdirichlet&lt;span class="p"&gt;(&lt;/span&gt;K&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="kp"&gt;rep&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="kp"&gt;beta&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; sizeVocab&lt;span class="p"&gt;))&lt;/span&gt;
+&lt;span class="c1"&gt;# Plotting distribution for the first topic&lt;/span&gt;
+plot&lt;span class="p"&gt;(&lt;/span&gt;phi&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,]&lt;/span&gt; &lt;span class="o"&gt;%&amp;gt;%&lt;/span&gt; &lt;span class="kp"&gt;as.numeric&lt;/span&gt;&lt;span class="p"&gt;())&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;&lt;img alt="" src="figure/lda-generation-R/unnamed-chunk-5-1.png"&gt;&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kp"&gt;dim&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;phi&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;## [1]  10 320
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;The plot shows the term distribution for the first topic: Again, we can see that some terms have a high probability of occurring, while the majority hover at the low values. &lt;/p&gt;
+&lt;p&gt;The dimensionality of &lt;code&gt;phi&lt;/code&gt; show that for each of the 10 topics, we get one value for each of the 320 words. That means that each word has some probability of occurring in each topics, although often this probability is approximating zero.&lt;/p&gt;
+&lt;h2&gt;&lt;strong&gt;Generating documents&lt;/strong&gt;&lt;/h2&gt;
+&lt;p&gt;Now that we know how these two distributions are used, we can generate documents from scratch. Of course, since our vocabulary is just a list of words, we will get incoherent documents back that are not particular insightful. But remember, this is just a toy model. When you use real data, the topics should be coherent.&lt;/p&gt;
+&lt;p&gt;Let's first set some additional parameters we need to generate these documents. First, we have to set the number of documents we want to generate. Let's choose $N=5$. We also have to decide how long, that is, how many terms should be in each document. Let's set $NumWords=20$. This is rather low number, but this way we can still analyze the documents by hand. Let's keep $K=10$, and the parameters $\alpha=50/K=5$ and $\beta=.1$. We will use the vocabulary from Shakespeare from the above example.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;N &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="m"&gt;5&lt;/span&gt;
+NumWords &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="m"&gt;20&lt;/span&gt;
+
+K &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="m"&gt;10&lt;/span&gt;
+alpha &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;K
+beta &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="m"&gt;.1&lt;/span&gt;
+
+sizeVocab &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kp"&gt;length&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;vocab&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Once we've set all the parameters, let's create the two distributions, for topics $\theta$ and terms $\phi$ respectively.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;theta &lt;span class="o"&gt;=&lt;/span&gt; rdirichlet&lt;span class="p"&gt;(&lt;/span&gt;N&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="kp"&gt;rep&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;alpha&lt;span class="p"&gt;,&lt;/span&gt; K&lt;span class="p"&gt;))&lt;/span&gt;
+&lt;span class="kp"&gt;dim&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;theta&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;## [1]  5 10
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;phi &lt;span class="o"&gt;=&lt;/span&gt; rdirichlet&lt;span class="p"&gt;(&lt;/span&gt;K&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="kp"&gt;rep&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="kp"&gt;beta&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; sizeVocab&lt;span class="p"&gt;))&lt;/span&gt;
+&lt;span class="kp"&gt;dim&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;phi&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;## [1]  10 320
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Now remember, to generate a document, we first have to allocate topics to each word in each document. Then we have to sample a terms from that document, and concatenate those words to create the document. Let's do this step by step.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;i &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="m"&gt;1&lt;/span&gt;
+topics &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kp"&gt;sample&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;K&lt;span class="p"&gt;,&lt;/span&gt;
+          size &lt;span class="o"&gt;=&lt;/span&gt; NumWords&lt;span class="p"&gt;,&lt;/span&gt; 
+          replace &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kc"&gt;TRUE&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; 
+          prob &lt;span class="o"&gt;=&lt;/span&gt; theta&lt;span class="p"&gt;[&lt;/span&gt;i&lt;span class="p"&gt;,])&lt;/span&gt; 
+topics
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;##  [1] 5 5 5 5 5 5 5 5 7 5 5 5 5 5 5 5 7 5 5 5
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Our first document ($i=1$) consists mainly of terms allocated to either topic number 5 or 7. By inspecting the $theta$ distribution for that row, we can see that this reflects the distribution:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;theta&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,]&lt;/span&gt; &lt;span class="o"&gt;%&amp;gt;%&lt;/span&gt; plot&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;&lt;img alt="" src="figure/lda-generation-R/unnamed-chunk-9-1.png"&gt;&lt;/p&gt;
+&lt;p&gt;Now that we have a topic, let's sample a word from the term distribution $\phi$. We test this only for the first topic.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;j &lt;span class="o"&gt;=&lt;/span&gt; topics&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;  &lt;span class="c1"&gt;# first topic&lt;/span&gt;
+term &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kp"&gt;sample&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;vocab&lt;span class="p"&gt;,&lt;/span&gt; 
+              size &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; 
+              prob &lt;span class="o"&gt;=&lt;/span&gt; phi&lt;span class="p"&gt;[&lt;/span&gt;j&lt;span class="p"&gt;,])&lt;/span&gt;
+term
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;## [1] &amp;quot;enrapt&amp;quot;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Alright, we got our first term! To generate the whole document, we have to repeat the steps for each term-position in the document. To generate all documents, we have to do all these steps for all terms in each document. We could achieve this by writing a for-loop, but it's easier using &lt;code&gt;lapply&lt;/code&gt; together with functions. Let's first wrap the commands for topic and term generation in functions.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;# takes a document i and generates a topic distribution&lt;/span&gt;
+generateTopics &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kr"&gt;function&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;i&lt;span class="p"&gt;){&lt;/span&gt;
+  topics &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kp"&gt;sample&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;K&lt;span class="p"&gt;,&lt;/span&gt;
+          size &lt;span class="o"&gt;=&lt;/span&gt; NumWords&lt;span class="p"&gt;,&lt;/span&gt; 
+          replace &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kc"&gt;TRUE&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; 
+          prob &lt;span class="o"&gt;=&lt;/span&gt; theta&lt;span class="p"&gt;[&lt;/span&gt;i&lt;span class="p"&gt;,])&lt;/span&gt; 
+  topics
+&lt;span class="p"&gt;}&lt;/span&gt;
+
+&lt;span class="c1"&gt;# takes a topic j and samples a term from its term distribution&lt;/span&gt;
+generateWord &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kr"&gt;function&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;j&lt;span class="p"&gt;){&lt;/span&gt;
+  term &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kp"&gt;sample&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;vocab&lt;span class="p"&gt;,&lt;/span&gt; 
+                size &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; 
+                prob &lt;span class="o"&gt;=&lt;/span&gt; phi&lt;span class="p"&gt;[&lt;/span&gt;j&lt;span class="p"&gt;,])&lt;/span&gt;
+  term
+&lt;span class="p"&gt;}&lt;/span&gt;
+
+generateTopics&lt;span class="p"&gt;(&lt;/span&gt;i&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;##  [1] 5 7 5 5 7 5 5 7 5 5 7 5 5 5 5 5 5 5 5 5
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;generateWord&lt;span class="p"&gt;(&lt;/span&gt;j&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;## [1] &amp;quot;spectacled&amp;quot;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Because we have to iterate over the topics generated by &lt;code&gt;generateTopics&lt;/code&gt;, we'll write another function that will call &lt;code&gt;generateWord&lt;/code&gt; on each topic. We can also implement a small command that will string together all the terms to make the output look a little nicer.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;generateDocument &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kr"&gt;function&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;d&lt;span class="p"&gt;){&lt;/span&gt;
+  topics &lt;span class="o"&gt;=&lt;/span&gt; generateTopics&lt;span class="p"&gt;(&lt;/span&gt;d&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="c1"&gt;# d is the current document&lt;/span&gt;
+  terms &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kp"&gt;lapply&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;topics&lt;span class="p"&gt;,&lt;/span&gt; generateWord&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;%&amp;gt;%&lt;/span&gt; &lt;span class="kp"&gt;unlist&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt; &lt;span class="c1"&gt;# for each topic, generate a word&lt;/span&gt;
+  document &lt;span class="o"&gt;=&lt;/span&gt; terms &lt;span class="o"&gt;%&amp;gt;%&lt;/span&gt; &lt;span class="kp"&gt;paste&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="m"&gt;.&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; collapse &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s"&gt;&amp;quot; &amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="c1"&gt;# string those together&lt;/span&gt;
+  document
+&lt;span class="p"&gt;}&lt;/span&gt;
+documents &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kp"&gt;lapply&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;N&lt;span class="p"&gt;,&lt;/span&gt; generateDocument&lt;span class="p"&gt;)&lt;/span&gt;
+documents  &lt;span class="o"&gt;%&amp;gt;%&lt;/span&gt; pander&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;ul&gt;
+&lt;li&gt;housekeeping housekeeping new-fangled far-off gust to enmesh nimble-footed hob-nails belongings lonely  far-off revolting far-off shooting star housekeeping perusal housekeeping money's worth bold-faced urging&lt;/li&gt;
+&lt;li&gt;long-legged to besmirch to drug hunchbacked rumination to drug dishearten gnarled bottled excitement  hoodwinked schoolboy tranquil schoolboy to dwindle schoolboy tardily mountaineer title page to lapse&lt;/li&gt;
+&lt;li&gt;shooting star critical eyeball foppish posture gnarled foppish reprieve freezing to submerge enrapt apostrophe apostrophe day's work inauspicious savagery revolting long-legged to gossip to uncurl&lt;/li&gt;
+&lt;li&gt;revolting fitful bump consanguineous to drug tardiness luggage to torture  critic varied to submerge consanguineous critical unappeased to undress new-fallen perplex hobnob flawed deafening&lt;/li&gt;
+&lt;li&gt;to negotiate stillborn engagement excitement  to uncurl savage malignancy to swagger juiced courtship juiced overgrowth bandit money's worth posture to negotiate to humor malignancy shudder to forward&lt;/li&gt;
+&lt;/ul&gt;
+&lt;!-- end of list --&gt;
+
+&lt;p&gt;The documents were successfully generated based on the term and topic distribution. Of course, they're all nonsense. Neither our vocabulary or the bag-of-words assumption, where order doesn't matter, reflect reality. Nevertheless, this procedure is the underlying idea behind the success of LDA.&lt;/p&gt;
+&lt;h2&gt;&lt;strong&gt;Inference&lt;/strong&gt;&lt;/h2&gt;
+&lt;p&gt;Alright, we generated some documents. But how does that help us in analyzing a corpus of text? In such a case, it's the reverse situation: We have our documents, but have no idea what the topic distribution $\theta$ and the term distribution $\phi$ is. This is where the real magic comes in. LDA can leverage this generative idea to infer the two distributions. Several implementations exist to do so, including variational inference and &lt;a href="https://en.wikipedia.org/wiki/Gibbs_sampling"&gt;Gibbs sampling&lt;/a&gt;. Once the topic distributions and terms are inferred, it is possible to compare documents and topics to each other, as well as track changes over time. I might post another article in the near future on how this inference works in more detail - if you're interested, read the original Blei et al. paper, or this paper using Gibbs sampling &lt;a name=cite-Griffiths_2004&gt;&lt;/a&gt;(&lt;a href="http://dx.doi.org/10.1073/pnas.0307752101"&gt;Griffiths and Steyvers, 2004&lt;/a&gt;).&lt;/p&gt;
+&lt;h2&gt;&lt;strong&gt;Summary&lt;/strong&gt;&lt;/h2&gt;
+&lt;p&gt;The blog post focused on the generative nature of LDA. LDA uses several steps to generate documents:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;For each topic $z$ (where $z$ is from $1$ to $K$) generate a multinomial term distribution $\phi_z$ from a Dirichlet prior $\beta$ to represent which terms are probable in which topics. &lt;/li&gt;
+&lt;li&gt;For each document $d$, draw a multinomial topic distribution $\theta_d$ from a Dirichlet prior $\alpha$ to represent which topics are probable in this document.&lt;/li&gt;
+&lt;li&gt;For each word $w_{di}$ in document $d$:&lt;ul&gt;
+&lt;li&gt;Draw a topic $z_{di}$ from $\theta_d$&lt;/li&gt;
+&lt;li&gt;Draw a word $w_{di}$ from $\phi_{z_{di}}$&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;I hope the examples (although silly) helped explain the generative process underlying LDA, as well as the conceptual reasoning behind it. While the generative process does not actually work well to generate documents, the assumptions produce great results by inferring the posterior distributions $\theta$ and $\phi$. It has been used in a wide range of applications such as in the digital humanities, for instance, in analyzing classical scholarship &lt;a name=cite-Mimno_2012&gt;&lt;/a&gt;(&lt;a href="http://dx.doi.org/10.1145/2160165.2160168"&gt;Mimno, 2012&lt;/a&gt;), and scientometrics, for instance, tracing the history of topics in computer science &lt;a name=cite-Hall_2008&gt;&lt;/a&gt;(&lt;a href="http://dx.doi.org/10.3115/1613715.1613763"&gt;Hall, Jurafsky, and Manning, 2008&lt;/a&gt;). If you are interested in applying LDA to one of your own data sets, check out the &lt;a href="https://cran.r-project.org/web/packages/topicmodels/index.html"&gt;topicmodels package&lt;/a&gt; in R &lt;a name=cite-Gr_n_2011&gt;&lt;/a&gt;(&lt;a href="http://dx.doi.org/10.18637/jss.v040.i13"&gt;Grün and Hornik, 2011&lt;/a&gt;). It's fairly straightforward to use, so check out the paper and the vignettes! If you can wait, I'm planning on writing another blog post on running LDA and some ways to analyze the results shortly.&lt;/p&gt;
+&lt;h2&gt;&lt;strong&gt;References&lt;/strong&gt;&lt;/h2&gt;
+&lt;p&gt;&lt;a name=bib-Blei_2012&gt;&lt;/a&gt;&lt;a href="#cite-Blei_2012"&gt;[1]&lt;/a&gt; D. M. Blei.
+"Probabilistic topic models". In: &lt;em&gt;Communications of the ACM&lt;/em&gt; 55.4
+(Apr. 2012), p. 77. DOI:
+&lt;a href="http://dx.doi.org/10.1145/2133806.2133826"&gt;10.1145/2133806.2133826&lt;/a&gt;.
+URL:
+&lt;a href="http://dx.doi.org/10.1145/2133806.2133826"&gt;http://dx.doi.org/10.1145/2133806.2133826&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;&lt;a name=bib-Blei_2003&gt;&lt;/a&gt;&lt;a href="#cite-Blei_2003"&gt;[2]&lt;/a&gt; D. Blei, A. Ng
+and M. Jordan. "Latent Dirichlet Allocation". In: &lt;em&gt;Journal of
+Machine Learning Research&lt;/em&gt; (2003).&lt;/p&gt;
+&lt;p&gt;&lt;a name=bib-Griffiths_2004&gt;&lt;/a&gt;&lt;a href="#cite-Griffiths_2004"&gt;[3]&lt;/a&gt; T. L.
+Griffiths and M. Steyvers. "Finding scientific topics". In:
+&lt;em&gt;Proceedings of the National Academy of Sciences&lt;/em&gt; 101.Supplement 1
+(Feb. 2004), pp. 5228-5235. DOI:
+&lt;a href="http://dx.doi.org/10.1073/pnas.0307752101"&gt;10.1073/pnas.0307752101&lt;/a&gt;.
+URL:
+&lt;a href="http://dx.doi.org/10.1073/pnas.0307752101"&gt;http://dx.doi.org/10.1073/pnas.0307752101&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;&lt;a name=bib-Gr_n_2011&gt;&lt;/a&gt;&lt;a href="#cite-Gr_n_2011"&gt;[4]&lt;/a&gt; B. Grün and K.
+Hornik. " topicmodels : An R Package for Fitting Topic Models ".
+In: &lt;em&gt;Journal of Statistical Software&lt;/em&gt; 40.13 (2011). DOI:
+&lt;a href="http://dx.doi.org/10.18637/jss.v040.i13"&gt;10.18637/jss.v040.i13&lt;/a&gt;.
+URL:
+&lt;a href="http://dx.doi.org/10.18637/jss.v040.i13"&gt;http://dx.doi.org/10.18637/jss.v040.i13&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;&lt;a name=bib-Hall_2008&gt;&lt;/a&gt;&lt;a href="#cite-Hall_2008"&gt;[5]&lt;/a&gt; D. Hall, D.
+Jurafsky and C. D. Manning. "Studying the history of ideas using
+topic models". In: &lt;em&gt;Proceedings of the Conference on Empirical
+Methods in Natural Language Processing - EMNLP
+\textquotesingle08&lt;/em&gt;. Association for Computational Linguistics
+(ACL), 2008. DOI:
+&lt;a href="http://dx.doi.org/10.3115/1613715.1613763"&gt;10.3115/1613715.1613763&lt;/a&gt;.
+URL:
+&lt;a href="http://dx.doi.org/10.3115/1613715.1613763"&gt;http://dx.doi.org/10.3115/1613715.1613763&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;&lt;a name=bib-Mimno_2012&gt;&lt;/a&gt;&lt;a href="#cite-Mimno_2012"&gt;[6]&lt;/a&gt; D. Mimno.
+"Computational historiography". In: &lt;em&gt;J. Comput. Cult. Herit.&lt;/em&gt; 5.1
+(Apr. 2012), pp. 1-19. DOI:
+&lt;a href="http://dx.doi.org/10.1145/2160165.2160168"&gt;10.1145/2160165.2160168&lt;/a&gt;.
+URL:
+&lt;a href="http://dx.doi.org/10.1145/2160165.2160168"&gt;http://dx.doi.org/10.1145/2160165.2160168&lt;/a&gt;.&lt;/p&gt;</content><category term="LDA"></category><category term="generative model"></category><category term="R"></category></entry><entry><title>Identifying outliers and influential cases</title><link href="/outlier-influence-identification.html" rel="alternate"></link><published>2015-10-21T00:00:00+00:00</published><updated>2015-10-21T00:00:00+00:00</updated><author><name></name></author><id>tag:None,2015-10-21:/outlier-influence-identification.html</id><summary type="html">&lt;p&gt;With experimental data, you commonly have to deal with "outliers", that is, data points that behave differently than the rest of the data for some reason. These outliers can influence the analysis and thus the interpretation of the data. In this blog post, we will look at these outliers and …&lt;/p&gt;</summary><content type="html">&lt;p&gt;With experimental data, you commonly have to deal with "outliers", that is, data points that behave differently than the rest of the data for some reason. These outliers can influence the analysis and thus the interpretation of the data. In this blog post, we will look at these outliers and what exactly they are, and how they can influence data analysis and interpretation. Using simple linear regression as an example, we will go through some cases where individual data points influence the model significantly, and use R to identify them.&lt;/p&gt;
+&lt;h2&gt;&lt;strong&gt;Leverage, discrepancy and influence&lt;/strong&gt;&lt;/h2&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Some observations do not fit the model well—these are called outliers. Other observations change the fit of the model in a substantive manner—these are called influential observations. A point can be none, one or both of these. A leverage point is unusual in the predictor space—it has the potential to influence the fit. &lt;a name=cite-Faraway2005&gt;&lt;/a&gt;(&lt;a href="#bib-Faraway2005"&gt;Faraway, 2005&lt;/a&gt;)&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;While a lot of researchers talk about outliers in a very general way, there are actually different types of unusual data points, and only one is "officially" termed an outlier. A data point can be unusual in its predictor behavior (in simple regression, the $x$-value), its outcome (in simple regression, the $y$-value), or both.&lt;/p&gt;
+&lt;p&gt;A point that is highly different in its predictor behavior than the rest of the data is a &lt;strong&gt;leverage point&lt;/strong&gt;. In the case of a simple linear regression, that means that its $x$-value is either much higher or lower than the mean of the predictor. &lt;/p&gt;
+&lt;p&gt;If a point has an unusual $y$-value given its $x$-value, it has high &lt;strong&gt;discrepancy&lt;/strong&gt;. This is what is called a outlier within the regression framework.&lt;/p&gt;
+&lt;p&gt;Neither of these feature necessarily makes a data point &lt;strong&gt;influence&lt;/strong&gt; a linear model. In fact, the &lt;strong&gt;influence&lt;/strong&gt; of a single data point is defined as its leverage $\times$ its discrepancy. This means that simply having high leverage or high discrepancy is not always enough to change model parameters.&lt;/p&gt;
+&lt;p&gt;The figure below illustrate these three characteristics. In each of the three panels,the red line shows the line of best fit without the point in question (marked by the triangle), while the blue line shows the line of best fit with it. In panel A, the the data point with the triangle has a high leverage - its $x$-value is much higher than the rests. In panel B, it has a high discrepancy - it lies pretty far away from the line of best fit. However, neither of these points exert a lot of influence on our model parameters, as the red line does not diverge a lot from the blue line. In panel C, we see a point that has both high leverage and high discrepancy, and as a result, high influence: The blue line is very different than the red line.&lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="figure/outlier-influence-identification/unnamed-chunk-2-1.png"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href="/barplots-are-pies.html"&gt;While plotting data can give you an idea on which points are influential&lt;/a&gt; and is highly recommended, it might become a little unfeasible with a larger sample size. Different measures exist to assess each of these three values, and I will go through them one by one using a very basic example. &lt;/p&gt;
+&lt;h2&gt;&lt;strong&gt;Our example data&lt;/strong&gt;&lt;/h2&gt;
+&lt;p&gt;In this tutorial, we will use a data set based on an example in &lt;a name=cite-Faraway2005&gt;&lt;/a&gt;&lt;a href="#bib-Field2012"&gt; Field, Miles, and Field (2012)&lt;/a&gt;. The data set consists of eight samples. Our $x$-value, the predictor, is the number of pubs within a borough (district) of London, and our $y$-value, the number of deaths in that borough over a certain period of time. We are interested in how the number of deaths are related to the number of pubs in each boroughs, which means we'll use a simple linear regression with one predictor as our model.&lt;/p&gt;
+&lt;p&gt;Let's take a quick peak at the data:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;pubs 
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;##   pubs    deaths name
+## 1   10  1043.822    1
+## 2   25  2086.934    2
+## 3   40  2951.086    3
+## 4   55  3992.459    4
+## 5   70  5088.003    5
+## 6   85  6095.645    6
+## 7  100  6923.497    7
+## 8  500 10000.000    8
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;And plot the line of best fit:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="figure/outlier-influence-identification/unnamed-chunk-4-1.png"&gt;&lt;/p&gt;
+&lt;p&gt;Both from the raw data and the plot of the linear regression, it's obvious that one data point, point 8, is quite different than the rest. Not only is the number of pubs much higher than the rest, but the number of deaths seems to be in a different relation than in each of the other boroughs. Interesting!&lt;/p&gt;
+&lt;p&gt;Now that we already have some suspicion about this particular data point, let's see if this point has &lt;em&gt;a)&lt;/em&gt; leverage &lt;em&gt;b)&lt;/em&gt; discrepancy and &lt;em&gt;c)&lt;/em&gt; influence. &lt;/p&gt;
+&lt;h2&gt;&lt;strong&gt;Assessing leverage&lt;/strong&gt;&lt;/h2&gt;
+&lt;p&gt;Remember that leverage measures how far a predictor value is different to the rest of the predictor values. In simple linear regression, we can simply measure the distance to the mean of the predictor ($\bar{X}$) for each individual predictor point ($X_i$). A standardized version of this distance is called &lt;em&gt;hat-value&lt;/em&gt; and denoted by $h_i$ (for $i = {1 \ldots n}$):&lt;/p&gt;
+&lt;p&gt;$$\begin{aligned} 
+h_i &amp;amp;= \frac{1}{n} + \frac{(X_i - \bar{X})^2}{\sum^n_{j=1}(X_j-\bar{X})^2}
+\end{aligned}$$  &lt;/p&gt;
+&lt;p&gt;The average hat value is defined as $\frac{p+1}{n}$, in which $p$ is the number of predictors and $n$ the number of participants/cases. Values of $h$ are bound between $1/n$ and 1, with 1 denoting highest leverage (highest distance from mean). &lt;/p&gt;
+&lt;p&gt;By looking at our example data, you should immediately guess that point 8 has the highest leverage of all points. Let's use the above formula to calculate $h_8$:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;# number of cases&lt;/span&gt;
+n &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kp"&gt;nrow&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;pubs&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="c1"&gt;# distance to mean of point 8&lt;/span&gt;
+numerator &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;pubs&lt;span class="o"&gt;$&lt;/span&gt;pubs&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="m"&gt;8&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;-&lt;/span&gt; &lt;span class="kp"&gt;mean&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;pubs&lt;span class="o"&gt;$&lt;/span&gt;pubs&lt;span class="p"&gt;))&lt;/span&gt;&lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="m"&gt;2&lt;/span&gt;
+
+&lt;span class="c1"&gt;# distance to mean of all the other points&lt;/span&gt;
+denominator &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kp"&gt;sum&lt;/span&gt;&lt;span class="p"&gt;((&lt;/span&gt;pubs&lt;span class="o"&gt;$&lt;/span&gt;pubs &lt;span class="o"&gt;-&lt;/span&gt; &lt;span class="kp"&gt;mean&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;pubs&lt;span class="o"&gt;$&lt;/span&gt;pubs&lt;span class="p"&gt;))&lt;/span&gt;&lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="m"&gt;2&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="c1"&gt;# putting it together&lt;/span&gt;
+h_8 &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;n&lt;span class="o"&gt;+&lt;/span&gt;numerator&lt;span class="o"&gt;/&lt;/span&gt;denominator
+
+h_8
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;## [1] 0.969302
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;The resulting hat-value is 0.969302. That is quite high - in fact, it's very close to 1, the highest possible value! Luckily, you don't have to calculate all hat-values by hand, as R provides a convenient &lt;code&gt;hatvalues&lt;/code&gt; function that can be called on any linear model. To let R do its magic, let's first fit a simple linear model by calling &lt;code&gt;lm&lt;/code&gt;, and then extracting the hat-values:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;# fitting linear model&lt;/span&gt;
+mod.pubs &lt;span class="o"&gt;=&lt;/span&gt; lm&lt;span class="p"&gt;(&lt;/span&gt;deaths&lt;span class="o"&gt;~&lt;/span&gt;pubs&lt;span class="p"&gt;,&lt;/span&gt; data&lt;span class="o"&gt;=&lt;/span&gt;pubs&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="c1"&gt;# getting hatvalues and printing them&lt;/span&gt;
+hs &lt;span class="o"&gt;=&lt;/span&gt; hatvalues&lt;span class="p"&gt;(&lt;/span&gt;mod.pubs&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="kp"&gt;as.numeric&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;hs&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;## [1] 0.1813863 0.1658284 0.1527766 0.1422307 0.1341907 0.1286567 0.1256287
+## [8] 0.9693020
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Luckily, our by-hand calculation matches the value R provides for data point 8. You can also see that all other hat-values are relatively close to 0. Remember that leverage alone does not mean a point exerts high influence, but it certainly means it's worth investigating. Hat values are open to interpretation, but a cut-off value that is common is twice the average $\bar{h}$, meaning anything above that value should be looked at closer. In this case, $h_8$ is definitely unusual!&lt;/p&gt;
+&lt;p&gt;After having assessed leverage, let's look at discrepancy. How unusual is the $y$-value given its $x$-value?&lt;/p&gt;
+&lt;h2&gt;&lt;strong&gt;Assessing discrepancy&lt;/strong&gt;&lt;/h2&gt;
+&lt;p&gt;As explained above, points that do not have a good fit to the linear regression line are considered outliers or are points with high discrepancy. To measure the fit, normally we look at residuals which measures how close a predicted value is to the actual value. We already now that point 8 has high leverage, but the line of best fit is actually pretty close to its predicted value (see below, panel I). By simply looking at the residuals (panel II), point 8 is not further away that other points. Of course, if you plotted the residuals, you should still notice something is off. For example, they are not normally distributed.&lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="figure/outlier-influence-identification/unnamed-chunk-8-1.png"&gt;&lt;/p&gt;
+&lt;p&gt;Instead, we can look at &lt;em&gt;studentized residuals&lt;/em&gt;. Studentized residuals are calculated by fitting a model without the case for which the residual is calculated, and then scaling the resulting residual ($E_i$) by an estimate of the standard deviation of the residuals ($S_{E(-i)}$) and the point's hat value ($h_i$):&lt;/p&gt;
+&lt;p&gt;$$\begin{align}
+E_{i}^{*} = \frac{E_i}{S_{E(-i)}\sqrt{1-h_i}} \end{align}$$&lt;/p&gt;
+&lt;p&gt;Let's calculate the studentized residual for our test data by hand. Remember that in this case, the 8th data point is the one we're interested in:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;# model excluding point 8&lt;/span&gt;
+mod.pubs.red &lt;span class="o"&gt;=&lt;/span&gt; lm&lt;span class="p"&gt;(&lt;/span&gt;y&lt;span class="o"&gt;~&lt;/span&gt;x&lt;span class="p"&gt;,&lt;/span&gt; data&lt;span class="o"&gt;=&lt;/span&gt;pubs&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="m"&gt;-8&lt;/span&gt;&lt;span class="p"&gt;,])&lt;/span&gt; 
+
+&lt;span class="c1"&gt;# residual for data point in original model&lt;/span&gt;
+Ei &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kp"&gt;as.numeric&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;residuals&lt;span class="p"&gt;(&lt;/span&gt;mod.pubs&lt;span class="p"&gt;)[&lt;/span&gt;&lt;span class="m"&gt;8&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
+
+&lt;span class="c1"&gt;# estimate of sigma (standard deviation) for residuals&lt;/span&gt;
+S_E &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kp"&gt;summary&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;mod.pubs.red&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="o"&gt;$&lt;/span&gt;sigma
+
+&lt;span class="c1"&gt;# hatvalue for point 8&lt;/span&gt;
+hi &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kp"&gt;as.numeric&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;hatvalues&lt;span class="p"&gt;(&lt;/span&gt;mod.pubs&lt;span class="p"&gt;)[&lt;/span&gt;&lt;span class="m"&gt;8&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
+
+&lt;span class="c1"&gt;# putting it together&lt;/span&gt;
+Estar &lt;span class="o"&gt;=&lt;/span&gt; Ei&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;S_E&lt;span class="o"&gt;*&lt;/span&gt;&lt;span class="kp"&gt;sqrt&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;hi&lt;span class="p"&gt;))&lt;/span&gt;
+Estar
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;## [1] -2.447433
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Of course, you can also just let R do the maths by calling &lt;code&gt;rstudent&lt;/code&gt; on the original model:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;stud.res &lt;span class="o"&gt;=&lt;/span&gt; rstudent&lt;span class="p"&gt;(&lt;/span&gt;mod.pubs&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="kp"&gt;as.numeric&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;stud.res&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;## [1]  -1.6276530  -0.8807533  -0.4470375   0.0407595   0.5634649   1.1148286
+## [7]   1.6812726 -54.5283362
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Note that the last value is the same as the one we calculated by hand! Let's compare the residuals and the studentized residuals in plots side by side:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="figure/outlier-influence-identification/unnamed-chunk-11-1.png"&gt;&lt;/p&gt;
+&lt;p&gt;The studentized residuals reveal clearly that point 8 has a high discrepancy, while this was not possible to see from the normal residual plots.&lt;/p&gt;
+&lt;p&gt;Because studentized residuals follow a $t$-distribution, we could apply significance tests or simply look at values that exceed the 95% confidence interval, that is, values that are not between $-1.96$ and $+1.96$. In our example, our curious data point is clearly beyond that 95% confidence interval. However, keep in mind that just because a value is beyond those cut-offs, doesn't mean it's necessarily a &lt;em&gt;bad&lt;/em&gt; data point. &lt;/p&gt;
+&lt;p&gt;You might also come across something called &lt;em&gt;standardized residuals&lt;/em&gt;. These are simply divided by the standard deviation, and do not follow a $t$-distribution and thus aren't quite as useful.&lt;/p&gt;
+&lt;h2&gt;&lt;strong&gt;Assessing influence&lt;/strong&gt;&lt;/h2&gt;
+&lt;p&gt;We have now seen measures for both assessing leverage and discrepancy, but we know that this doesn't necessarily translate into having high influence (however, you should still examine cases with high leverage and discrepancy). As our data point of interest has both high leverage and discrepancy, it should also have high influence. We'll use something called &lt;em&gt;DFFITS&lt;/em&gt; which relies on the studentized residuals to assess influence. A similar measure is &lt;em&gt;Cook's&lt;/em&gt; $d$, which instead is based on standardized residuals. Another measure we won't go into are &lt;em&gt;DFBETAS&lt;/em&gt;, which measures the influence on each individual parameter, instead of the overall model.&lt;/p&gt;
+&lt;p&gt;DFFITS measures the difference between the predicted values for model with and model without that case (for all cases and all parameters). If a case is not influential, its DFFITS value is close to zero. If it is influential, the change in predicted value ($\hat{y}$) is high. We can calculate DFFITS for a point by scaling its studentized residual by its hat value:&lt;/p&gt;
+&lt;p&gt;$$\begin{align}
+DFFITS_{i} = E_{i}^{*}\sqrt{\frac{h_i}{1-h_i}}
+\end{align}$$&lt;/p&gt;
+&lt;p&gt;Thus, DFFit combines both leverage and discrepancy, and gives you a measure of influence. A common cutoff for DFFITS values is $|DFFITS_i| &amp;gt; 2 \sqrt{\frac{k+1}{n-k-1}}$. &lt;/p&gt;
+&lt;p&gt;As the formula for DFFITS is rather easy, we won't go through the trouble of calculating it by hand. Rather, we can just call the &lt;code&gt;dffits&lt;/code&gt; function in R:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kp"&gt;as.numeric&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;dffits&lt;span class="p"&gt;(&lt;/span&gt;mod.pubs&lt;span class="p"&gt;))&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;## [1]   -0.76616892   -0.39269568   -0.18983374    0.01659741    0.22182831
+## [6]    0.42838046    0.63728625 -306.40556939
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;The last value, for point 8, is very large! Unsurprisingly, having a large discrepancy and leverage value resulted in a large influence value too. &lt;/p&gt;
+&lt;h2&gt;&lt;strong&gt;Putting it all together: Influence plots&lt;/strong&gt;&lt;/h2&gt;
+&lt;p&gt;While I've mentioned common cut-off values for all the measures, bear in mind that you should never blindly rely on these, but rather take into account all three measures we talked about and the overall nature of the data. In our example, data point 8 exerts quite a high influence, but does that mean we should exclude it from our model? It turns out that the borough this point represents is the City of London, a small borough with many of commuters. These commuters like to have to drink after work, which explains the large number of pubs. However, as there aren't as many residents, the number of deaths is not much larger than in the other boroughs. This means we shouldn't necessarily simply exclude it from our data, but look for explanations for why this case is different than the rest (common: typos!).&lt;/p&gt;
+&lt;p&gt;To look at all three measures at the same time, I recommend plotting the hat-values against the studentized residuals. The size of each point represents $DFFITS_i$. The resulting plot for the linear model applied to our example data is below. Hat-values are shown on the $x$-axis, and the cut-off of the hat-values is shown by the vertical line. Points to the right of this (in the shaded area) can be considered worthy of investigation. The $y$-axis shows the studentized residuals, and horizontal lines denote the 95% confidence interval. Again, points in the shaded area are worthy of being investigated. The size of each points represents that values DFFITS value, with values over the cutoff marked in red.&lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="figure/outlier-influence-identification/unnamed-chunk-14-1.png"&gt;&lt;/p&gt;
+&lt;p&gt;We can see that most points are in the white area, meaning that they do not show any concern. However, point 8 is different for all three values - something we've already discovered. &lt;/p&gt;
+&lt;p&gt;While I wrote my own function in R using &lt;code&gt;ggplot&lt;/code&gt;, you can also use the &lt;code&gt;influencePlot&lt;/code&gt; function in the &lt;code&gt;car&lt;/code&gt; package and call it on your regression model directly. However, this version shows Cook's $d$ instead of DFFIT in the point size, but the interpretation remains the same. The function also spews out noteworthy points as well as their influence metrics.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;library&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;car&lt;span class="p"&gt;)&lt;/span&gt;
+influencePlot&lt;span class="p"&gt;(&lt;/span&gt;mod.pubs&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;&lt;img alt="" src="figure/outlier-influence-identification/unnamed-chunk-15-1.png"&gt;&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;##     StudRes      Hat    CookD
+## 8 -54.52834 0.969302 94.56717
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Let's revisit our three plots from the beginning, which showed high leverage, high discrepancy and high influence respectively. How would influence plots look like for these data? &lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="figure/outlier-influence-identification/unnamed-chunk-16-1.png"&gt;&lt;/p&gt;
+&lt;p&gt;I hope you can make sense of these plots after reading this tutorial and identify the points. And again, bear in mind that especially for low sample data, the cut-offs are only a recommendation, and not justification to delete data points.&lt;/p&gt;
+&lt;p&gt;There's plenty more to model diagnostics than I have gone over in this tutorial, but hopefully you have a better understanding of influential data points and the relationship between leverage and discrepancy. Using the example data, you should be able to walk through the steps in this tutorial, and then apply the methods to your own data! If you'd like to know more, an excellent resource is John Fox's &lt;a href="http://socserv.socsci.mcmaster.ca/jfox/Courses/Brazil-2009/index.html"&gt;website on regression diagnostics&lt;/a&gt;, as well as the two books linked below.&lt;/p&gt;
+&lt;h2&gt;&lt;strong&gt;References&lt;/strong&gt;&lt;/h2&gt;
+&lt;p&gt;&lt;a name=bib-Faraway2005&gt;&lt;/a&gt;&lt;a href="#cite-Faraway2005"&gt;[1]&lt;/a&gt; J. J.
+Faraway. &lt;em&gt;Linear Models with R&lt;/em&gt;. Boca Raton: Taylor and Francis,
+2005.&lt;/p&gt;
+&lt;p&gt;&lt;a name=bib-Field2012&gt;&lt;/a&gt;&lt;a href="#cite-Faraway2005"&gt;[2]&lt;/a&gt; A. Field, J. Miles and Z. Field. &lt;em&gt;Discovering Statistics Using R&lt;/em&gt;. London and Thousand Oaks, CA: Sage, 2012.&lt;/p&gt;</content><category term="R"></category><category term="outliers"></category><category term="influence"></category><category term="diagnostics"></category></entry><entry><title>An Introduction to Gradient Descent in Python</title><link href="/python-gradient-descent.html" rel="alternate"></link><published>2015-08-05T00:00:00+00:00</published><updated>2015-08-05T00:00:00+00:00</updated><author><name></name></author><id>tag:None,2015-08-05:/python-gradient-descent.html</id><summary type="html">&lt;p&gt;Gradient descent is an optimization algorithm used to find the local minimum of a function. It is commonly used in many different machine learning algorithms. In this blog post, I will explain the principles behind gradient descent using Python, starting with a simple example of how gradient descent can be used to find the local minimum of a quadratic equation, and then progressing to applying gradient descent to linear regression. By the end of the post, you should be able to code your own version of gradient descent and understand the concept behind it.&lt;/p&gt;</summary><content type="html">&lt;p&gt;{% notebook notebooks/gradient_descent.ipynb %}&lt;/p&gt;</content></entry><entry><title>Bar plots are the new pie charts</title><link href="/barplots-are-pies.html" rel="alternate"></link><published>2015-05-19T00:00:00+00:00</published><updated>2015-05-19T00:00:00+00:00</updated><author><name></name></author><id>tag:None,2015-05-19:/barplots-are-pies.html</id><summary type="html">&lt;p&gt;A recent article titled &lt;em&gt;Beyond bar and line graphs: Time for a new data presentation paradigm&lt;/em&gt; &lt;a name=cite-Weissgerber_2015&gt;&lt;/a&gt;(&lt;a href="#bib-Weissgerber_2015"&gt;Weissgerber, Milic, Winham, and Garovic, 2015&lt;/a&gt;) led me to explore some of the pitfalls of bar plots as opposed to other graphs such as box plots or dot plots. Bar plots are incredibly common …&lt;/p&gt;</summary><content type="html">&lt;p&gt;A recent article titled &lt;em&gt;Beyond bar and line graphs: Time for a new data presentation paradigm&lt;/em&gt; &lt;a name=cite-Weissgerber_2015&gt;&lt;/a&gt;(&lt;a href="#bib-Weissgerber_2015"&gt;Weissgerber, Milic, Winham, and Garovic, 2015&lt;/a&gt;) led me to explore some of the pitfalls of bar plots as opposed to other graphs such as box plots or dot plots. Bar plots are incredibly common in academic literature - in their analysis, the authors found that 85% of papers used at least one bar plot to display data. Why is that bad? Well, bar plots only show aggregated data: Usually the mean and either the standard deviation or standard error. There are (at least) three drawbacks of this:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;It doesn't provide more information than pure numbers. Visualizing a mean of 10.34 and a standard deviation of 0.56 does not provide you any more information than simply writing it down.&lt;/li&gt;
+&lt;li&gt;Information is lost: Bar plots don't show any information about sample size or the distribution of data (more below).&lt;/li&gt;
+&lt;li&gt;Bad data-ink ratio: A lot of ink is used to not display additional information.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;In this post, I want to recreate some of the points made in the paper, and show some hands-on R code to illustrate the disadvantages of bar plots (and summary statistics, for that matter). &lt;/p&gt;
+&lt;p&gt;Let's load some necessary packages for our analysis...&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;library&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;dplyr&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="kn"&gt;library&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;ggplot2&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;... and display some information about our sample data:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kp"&gt;summary&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;df&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;##     group                 rt       
+##  Length:40          Min.   :14.69  
+##  Class :character   1st Qu.:20.51  
+##  Mode  :character   Median :24.09  
+##                     Mean   :23.87  
+##                     3rd Qu.:26.42  
+##                     Max.   :30.95
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;In this example, the test data consists of two variables: &lt;code&gt;rt&lt;/code&gt; representing reaction times, and &lt;code&gt;group&lt;/code&gt; representing gender (&lt;code&gt;male&lt;/code&gt; or &lt;code&gt;gender&lt;/code&gt;). Let's pretend that we're interested in the differences in reaction times between the two genders (for whatever reason; I'm incredibly uncreative). I included the code to generate the data at the bottom of the post, but for now, let's not look at it. The code actually reveals some of the points I'm going to make later on, so please be patient! (When you analyze your experimental data, you don't know the underlying process either!)&lt;/p&gt;
+&lt;p&gt;To explore the data further, we can look at the mean and standard deviation of the reaction times in both groups:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;agg &lt;span class="o"&gt;=&lt;/span&gt; df &lt;span class="o"&gt;%&amp;gt;%&lt;/span&gt;
+    group_by&lt;span class="p"&gt;(&lt;/span&gt;group&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;%&amp;gt;%&lt;/span&gt;
+    summarise&lt;span class="p"&gt;(&lt;/span&gt;mean &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kp"&gt;mean&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;rt&lt;span class="p"&gt;),&lt;/span&gt; sd &lt;span class="o"&gt;=&lt;/span&gt; sd&lt;span class="p"&gt;(&lt;/span&gt;rt&lt;span class="p"&gt;))&lt;/span&gt;
+agg
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;## Source: local data frame [2 x 3]
+## 
+##    group     mean       sd
+##    (chr)    (dbl)    (dbl)
+## 1 female 20.38384 2.625257
+## 2   male 27.36450 2.670447
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;From the aggregated data, we can see that the mean for males is higher than for females, but both have roughly the same standard deviation. This might lead us to the conclusion that males (for whatever reason) take longer to react to our experimental stimuli than females. In fact, if we run a simple &lt;em&gt;t&lt;/em&gt;-test, we get a significant difference:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kp"&gt;with&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;df&lt;span class="p"&gt;,&lt;/span&gt; t.test&lt;span class="p"&gt;(&lt;/span&gt;rt&lt;span class="o"&gt;~&lt;/span&gt;group&lt;span class="p"&gt;))&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;## 
+##  Welch Two Sample t-test
+## 
+## data:  rt by group
+## t = -8.3366, df = 37.989, p-value = 4.153e-10
+## alternative hypothesis: true difference in means is not equal to 0
+## 95 percent confidence interval:
+##  -8.675816 -5.285512
+## sample estimates:
+## mean in group female   mean in group male 
+##             20.38384             27.36450
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;However, is this enough for us to conclude that there actually is a difference between genders? Let's try and visualize the data to find out more about the reaction times and its distribution.&lt;/p&gt;
+&lt;p&gt;As stated above, a common method is to use a bar plot:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;ggplot&lt;span class="p"&gt;(&lt;/span&gt;agg&lt;span class="p"&gt;,&lt;/span&gt; aes&lt;span class="p"&gt;(&lt;/span&gt;y&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="kp"&gt;mean&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; x&lt;span class="o"&gt;=&lt;/span&gt;group&lt;span class="p"&gt;,&lt;/span&gt; fill &lt;span class="o"&gt;=&lt;/span&gt; group&lt;span class="p"&gt;))&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt;
+  geom_bar&lt;span class="p"&gt;(&lt;/span&gt;stat &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;identity&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; position &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;dodge&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt;
+  geom_errorbar&lt;span class="p"&gt;(&lt;/span&gt;aes&lt;span class="p"&gt;(&lt;/span&gt;ymax &lt;span class="o"&gt;=&lt;/span&gt; mean &lt;span class="o"&gt;+&lt;/span&gt; sd&lt;span class="p"&gt;,&lt;/span&gt; ymin &lt;span class="o"&gt;=&lt;/span&gt; mean &lt;span class="o"&gt;-&lt;/span&gt; sd &lt;span class="p"&gt;),&lt;/span&gt; width &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="m"&gt;0.25&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt;
+  ggtitle&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;Common bar plot&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;&lt;img alt="" src="figure/barplots-are-pies/barplot-1.png"&gt;&lt;/p&gt;
+&lt;p&gt;Note that the plot doesn't give us more information than the aggregated data frame &lt;code&gt;agg&lt;/code&gt;! In fact, one could argue that the raw numbers are more precise and informative than the bar plot. However, this is what we often find in the literature. A slightly different visual representation showing the same information is this plot:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;ggplot&lt;span class="p"&gt;(&lt;/span&gt;agg&lt;span class="p"&gt;,&lt;/span&gt; aes&lt;span class="p"&gt;(&lt;/span&gt;y&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="kp"&gt;mean&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; x&lt;span class="o"&gt;=&lt;/span&gt;group&lt;span class="p"&gt;,&lt;/span&gt; col &lt;span class="o"&gt;=&lt;/span&gt; group&lt;span class="p"&gt;))&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt;
+  geom_point&lt;span class="p"&gt;(&lt;/span&gt;size &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="m"&gt;5&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt;
+  geom_errorbar&lt;span class="p"&gt;(&lt;/span&gt;aes&lt;span class="p"&gt;(&lt;/span&gt;ymax &lt;span class="o"&gt;=&lt;/span&gt; mean &lt;span class="o"&gt;+&lt;/span&gt; sd&lt;span class="p"&gt;,&lt;/span&gt; ymin &lt;span class="o"&gt;=&lt;/span&gt; mean &lt;span class="o"&gt;-&lt;/span&gt;sd &lt;span class="p"&gt;),&lt;/span&gt; 
+                width &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="m"&gt;0.25&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt;
+  ylim&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="m"&gt;0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="m"&gt;32&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;&lt;img alt="" src="figure/barplots-are-pies/meanplot-1.png"&gt;&lt;/p&gt;
+&lt;p&gt;The only advantage of this plot is a more economoc data-ink ratio, but it doesn't give us any more idea about the distribution of the data than the bar plot (they also look like the TIE fighers in Star Wars...). Box plots, on the other hand, provide more information about the underlying distribution, emphasizing interquartile ranges and the median (see &lt;code&gt;ggplot2&lt;/code&gt;'s &lt;a href="http://docs.ggplot2.org/0.9.3.1/geom_boxplot.html"&gt;help page&lt;/a&gt; for more info):&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;ggplot&lt;span class="p"&gt;(&lt;/span&gt;df&lt;span class="p"&gt;,&lt;/span&gt; aes&lt;span class="p"&gt;(&lt;/span&gt;x &lt;span class="o"&gt;=&lt;/span&gt; group&lt;span class="p"&gt;,&lt;/span&gt; y &lt;span class="o"&gt;=&lt;/span&gt; rt&lt;span class="p"&gt;,&lt;/span&gt; col &lt;span class="o"&gt;=&lt;/span&gt;group&lt;span class="p"&gt;))&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt;
+  stat_boxplot&lt;span class="p"&gt;(&lt;/span&gt;geom &lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;&amp;#39;errorbar&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="c1"&gt;# adds whiskers to the lines&lt;/span&gt;
+  geom_boxplot&lt;span class="p"&gt;()&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt;
+  ggtitle&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;Boxplot&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;&lt;img alt="" src="figure/barplots-are-pies/boxplot-1.png"&gt;&lt;/p&gt;
+&lt;p&gt;What information does the box plot add? Well, we can see that for females, we get values as low as below 15, and as high as above 25. Most of the datapoints seem to be between 19 and 23. For males, the data seems to be tighter, between 24 and 32 (despite the same standard variation!?)&lt;br&gt;
+While the box plot is a definitive improvement over the two previous plots, it still doesn't show us the whole distribution: What exactly is going on between the first and third quantile? How many data points are between 15 and 19 (the bottom whisker for females)?&lt;br&gt;
+How can we visualize all this information? Univariate dot plots! Simply plot all the data points individually, and jitter them around a little to avoid overlap:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;gp &lt;span class="o"&gt;=&lt;/span&gt; ggplot&lt;span class="p"&gt;(&lt;/span&gt;df&lt;span class="p"&gt;,&lt;/span&gt; aes&lt;span class="p"&gt;(&lt;/span&gt;x &lt;span class="o"&gt;=&lt;/span&gt; group&lt;span class="p"&gt;,&lt;/span&gt; y &lt;span class="o"&gt;=&lt;/span&gt; rt&lt;span class="p"&gt;,&lt;/span&gt; col &lt;span class="o"&gt;=&lt;/span&gt; group&lt;span class="p"&gt;))&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; 
+     geom_point&lt;span class="p"&gt;(&lt;/span&gt;size &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="m"&gt;3&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; 
+                position &lt;span class="o"&gt;=&lt;/span&gt; position_jitter&lt;span class="p"&gt;(&lt;/span&gt;width &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="m"&gt;.25&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt; 
+gp &lt;span class="o"&gt;+&lt;/span&gt; ggtitle&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;Univariate Dotplot&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;&lt;img alt="" src="figure/barplots-are-pies/dotplot-1.png"&gt;&lt;/p&gt;
+&lt;p&gt;Woah. The distribution for males is bimodal! Probably not a huge surprise if you looked at how we generated the data (you didn't peek, did you?), but not possible to see on any of the previous plots or the summary statistics. Why do we care that the data is bimodal? Maybe it's just fluke, and there is no deeper reason behind it. Maybe there is a latent variable that influences reaction times more than gender - maybe age, or exposure to whatever you're testing. Maybe participants in one group got distracted at some point, delaying their reaction time; or the computer didn't record the data properly. All of these (and more!) could be valid reasons, and need to be considered.&lt;/p&gt;
+&lt;p&gt;The dot plot additionally shows the distribution of the individual points (to check for outliers) and the sample size.  In this case, the sample size of the two groups is the same, but it could very well be different. &lt;/p&gt;
+&lt;p&gt;If needed, you can also add measures of central tendencies such as the mean yourself. This makes it even more apparent that the male distribution is bimodal:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;gp &lt;span class="o"&gt;+&lt;/span&gt; geom_errorbar&lt;span class="p"&gt;(&lt;/span&gt;stat &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;hline&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; yintercept &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;mean&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                   aes&lt;span class="p"&gt;(&lt;/span&gt;ymax&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="m"&gt;..&lt;/span&gt;y..&lt;span class="p"&gt;,&lt;/span&gt;ymin&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="m"&gt;..&lt;/span&gt;y..&lt;span class="p"&gt;),&lt;/span&gt;
+                   width &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="m"&gt;0.5&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; col &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;black&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt;
+    ggtitle&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;Dot plot with mean&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;That's it! I hope I could show why relying on summary statistics and statistical tests isn't always enough. Even visualizing the data with inadequate graphs such as bar plots is not sufficient. Both box plots and especially univariate dot plots can tell you more about the underlying distribution of your data, and might reveal some properties that have to be taken into account. As a final note, there are of course other ways to check for bimodality, such as histograms. Univariate dot plots, however, are more versatile: Check the original paper for more &lt;a href="http://dx.doi.org/10.1371/journal.pbio.1002128.g001"&gt;examples&lt;/a&gt;, if you're interested!&lt;/p&gt;
+&lt;h3&gt;Alternative: Cleveland Dot Plot&lt;/h3&gt;
+&lt;p&gt;Another way to plot distributions nicely is the Cleveland dot plot, which is very similar to the univariate dot plot describe above - but the axes are flipped and the &lt;code&gt;rt&lt;/code&gt; values are plotted against the observation index (see &lt;a name=cite-Zuur_2009&gt;&lt;/a&gt;&lt;a href="#bib-Zuur_2009"&gt;Zuur, Ieno, and Elphick (2009)&lt;/a&gt;). Here, values that are either far right or left are considered outliers. The bimodal distribution is clearly visible.&lt;br&gt;
+Plotting against the observation index can be helpful in analyzing why the distribution is bimodal. In these data, reaction times for females are higher for later observations - maybe there is a reason for that? &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;ggplot&lt;span class="p"&gt;(&lt;/span&gt;df&lt;span class="p"&gt;,&lt;/span&gt; aes&lt;span class="p"&gt;(&lt;/span&gt;x &lt;span class="o"&gt;=&lt;/span&gt; rt&lt;span class="p"&gt;,&lt;/span&gt; y &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="kp"&gt;length&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;rt&lt;span class="p"&gt;),&lt;/span&gt; col &lt;span class="o"&gt;=&lt;/span&gt; group&lt;span class="p"&gt;))&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; 
+  geom_point&lt;span class="p"&gt;(&lt;/span&gt;size &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="m"&gt;3&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt;
+  ggtitle&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;Cleveland Dot Plot&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt;
+  facet_grid&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="o"&gt;~&lt;/span&gt;group&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt;
+  ylab&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;Observation&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;&lt;img alt="" src="figure/barplots-are-pies/cleveland-1.png"&gt;&lt;/p&gt;
+&lt;h3&gt;Further Reading:&lt;/h3&gt;
+&lt;p&gt;&lt;a name=bib-Weissgerber_2015&gt;&lt;/a&gt;&lt;a href="#cite-Weissgerber_2015"&gt;[1]&lt;/a&gt; T.
+L. Weissgerber, N. M. Milic, S. J. Winham and V. D. Garovic.
+"Beyond Bar and Line Graphs: Time for a New Data Presentation
+Paradigm". In: &lt;em&gt;PLOS Biology&lt;/em&gt; 13.4 (Apr. 2015), p. e1002128. DOI:
+&lt;a href="http://dx.doi.org/10.1371/journal.pbio.1002128"&gt;10.1371/journal.pbio.1002128&lt;/a&gt;.
+URL:
+&lt;a href="http://dx.doi.org/10.1371/journal.pbio.1002128"&gt;http://dx.doi.org/10.1371/journal.pbio.1002128&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;&lt;a name=bib-Zuur_2009&gt;&lt;/a&gt;&lt;a href="#cite-Zuur_2009"&gt;[2]&lt;/a&gt; A. F. Zuur, E. N.
+Ieno and C. S. Elphick. "A protocol for data exploration to avoid
+common statistical problems". In: &lt;em&gt;Methods in Ecology and
+Evolution&lt;/em&gt; 1.1 (Nov. 2009), pp. 3-14. DOI:
+&lt;a href="http://dx.doi.org/10.1111/j.2041-210x.2009.00001.x"&gt;10.1111/j.2041-210x.2009.00001.x&lt;/a&gt;.
+URL:
+&lt;a href="http://dx.doi.org/10.1111/j.2041-210X.2009.00001.x"&gt;http://dx.doi.org/10.1111/j.2041-210X.2009.00001.x&lt;/a&gt;.&lt;/p&gt;
+&lt;hr&gt;
+&lt;h3&gt;Data generatation&lt;/h3&gt;
+&lt;p&gt;Here is how I generated the data:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;library&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;tidyr&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="kp"&gt;set.seed&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="m"&gt;42&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+df &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kt"&gt;data.frame&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;female &lt;span class="o"&gt;=&lt;/span&gt;   rnorm&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="m"&gt;20&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; mean &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="m"&gt;20&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; sd &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="m"&gt;2.0&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt; 
+                male   &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kt"&gt;c&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;rnorm&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="m"&gt;10&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; mean &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="m"&gt;30&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; sd &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="m"&gt;0.5&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt; 
+                           rnorm&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="m"&gt;10&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; mean &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="m"&gt;25&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; sd &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="m"&gt;0.5&lt;/span&gt;&lt;span class="p"&gt;)))&lt;/span&gt;
+df &lt;span class="o"&gt;=&lt;/span&gt; gather&lt;span class="p"&gt;(&lt;/span&gt;df&lt;span class="p"&gt;,&lt;/span&gt; group&lt;span class="p"&gt;,&lt;/span&gt; rt&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;</content><category term="R"></category><category term="visualization"></category></entry><entry><title>Accessing MongoDB from R with mongolite</title><link href="/mongodb-in-r.html" rel="alternate"></link><published>2015-05-18T00:00:00+00:00</published><updated>2015-05-18T00:00:00+00:00</updated><author><name></name></author><id>tag:None,2015-05-18:/mongodb-in-r.html</id><summary type="html">&lt;p&gt;Recently, I have moved away from text files as data storage, and started using &lt;a href="https://www.mongodb.org/"&gt;MongoDB&lt;/a&gt;. While there are already two R packages (&lt;code&gt;RMongo&lt;/code&gt; and &lt;code&gt;rmongodb&lt;/code&gt;) interfacing with MongoDB, I was never completed satified with them - especially in comparison to the excellent &lt;a href="http://api.mongodb.org/python/current/"&gt;PyMongo&lt;/a&gt;. A couple of days ago, a new package …&lt;/p&gt;</summary><content type="html">&lt;p&gt;Recently, I have moved away from text files as data storage, and started using &lt;a href="https://www.mongodb.org/"&gt;MongoDB&lt;/a&gt;. While there are already two R packages (&lt;code&gt;RMongo&lt;/code&gt; and &lt;code&gt;rmongodb&lt;/code&gt;) interfacing with MongoDB, I was never completed satified with them - especially in comparison to the excellent &lt;a href="http://api.mongodb.org/python/current/"&gt;PyMongo&lt;/a&gt;. A couple of days ago, a new package, &lt;code&gt;mongolite&lt;/code&gt;, was released and seems very promising.&lt;/p&gt;
+&lt;p&gt;Here, I quickly want to showcase some of the functions of mongolite, using &lt;a href="http://en.wikipedia.org/wiki/Iris_flower_data_set"&gt;Fisher's Iris data set&lt;/a&gt;. &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;data&lt;span class="p"&gt;(&lt;/span&gt;iris&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="c1"&gt;# remove . to avoid problems with MongoDBs naming structure&lt;/span&gt;
+&lt;span class="kp"&gt;names&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;iris&lt;span class="p"&gt;)[&lt;/span&gt;&lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="m"&gt;4&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kp"&gt;gsub&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;[.]&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="kp"&gt;names&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;iris&lt;span class="p"&gt;)[&lt;/span&gt;&lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="m"&gt;4&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="p"&gt;)&lt;/span&gt; 
+&lt;span class="kp"&gt;head&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;iris&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;##   SepalLength SepalWidth PetalLength PetalWidth Species
+## 1         5.1        3.5         1.4        0.2  setosa
+## 2         4.9        3.0         1.4        0.2  setosa
+## 3         4.7        3.2         1.3        0.2  setosa
+## 4         4.6        3.1         1.5        0.2  setosa
+## 5         5.0        3.6         1.4        0.2  setosa
+## 6         5.4        3.9         1.7        0.4  setosa
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;First, we need to insert the data from R into a new collection in MongoDB. This is done by first establishing a connection to the collection in the database, and then calling the &lt;code&gt;insert&lt;/code&gt; function on the connection handler. &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;library&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;mongolite&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="kt"&gt;c&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; mongo&lt;span class="p"&gt;(&lt;/span&gt;collection &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;iris&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; db &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;tutorials&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="kt"&gt;c&lt;/span&gt;&lt;span class="o"&gt;$&lt;/span&gt;insert&lt;span class="p"&gt;(&lt;/span&gt;iris&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="c1"&gt;## &lt;/span&gt;
+Complete&lt;span class="o"&gt;!&lt;/span&gt; Processed total of &lt;span class="m"&gt;150&lt;/span&gt; rows.
+&lt;span class="c1"&gt;## [1] TRUE&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;We get some nice feedback from the function, showing us that we inserted 150 rows (which is the total number of rows in the Iris data set). Let's start exploring the data with &lt;code&gt;mongolite&lt;/code&gt;. You can easily get the total number of rows, as well as the unique values within the &lt;code&gt;Species&lt;/code&gt; column/field: &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kt"&gt;c&lt;/span&gt;&lt;span class="o"&gt;$&lt;/span&gt;count&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;span class="c1"&gt;## [1] 150&lt;/span&gt;
+&lt;span class="kt"&gt;c&lt;/span&gt;&lt;span class="o"&gt;$&lt;/span&gt;distinct&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;Species&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="c1"&gt;## [1] &amp;quot;setosa&amp;quot;     &amp;quot;versicolor&amp;quot; &amp;quot;virginica&amp;quot;&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;It's also possible to utilize MongoDB's aggregate function through &lt;code&gt;$aggregate&lt;/code&gt;:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kt"&gt;c&lt;/span&gt;&lt;span class="o"&gt;$&lt;/span&gt;aggregate&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;#39;[{&amp;quot;$group&amp;quot;: {&lt;/span&gt;
+&lt;span class="s"&gt;                &amp;quot;_id&amp;quot;:&amp;quot;$Species&amp;quot;, &lt;/span&gt;
+&lt;span class="s"&gt;                &amp;quot;count&amp;quot;: {&amp;quot;$sum&amp;quot;:1}, &lt;/span&gt;
+&lt;span class="s"&gt;                &amp;quot;avgPetalLength&amp;quot;:{&amp;quot;$avg&amp;quot;:&amp;quot;$PetalLength&amp;quot;}&lt;/span&gt;
+&lt;span class="s"&gt;              }}]&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;## 
+ Found 3 records...
+ Imported 3 records. Simplifying into dataframe...
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;##          _id count avgPetalLength
+## 1  virginica    50          5.552
+## 2 versicolor    50          4.260
+## 3     setosa    50          1.462
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Of course, with a small data set such as the Iris data, there is no drawback in simply doing the aggregating in &lt;code&gt;dplyr&lt;/code&gt;, but if you are dealing with a big data set, querying the MongoDB database directly might give you some performance benefits, as not all the data has to be loaded into memory.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;iris &lt;span class="o"&gt;%&amp;gt;%&lt;/span&gt;
+  group_by&lt;span class="p"&gt;(&lt;/span&gt;Species&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;%&amp;gt;%&lt;/span&gt;
+  summarise&lt;span class="p"&gt;(&lt;/span&gt;count &lt;span class="o"&gt;=&lt;/span&gt; n&lt;span class="p"&gt;(),&lt;/span&gt; avg &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kp"&gt;mean&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;PetalLength&lt;span class="p"&gt;))&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;## Source: local data frame [3 x 3]
+## 
+##      Species count   avg
+##       (fctr) (int) (dbl)
+## 1     setosa    50 1.462
+## 2 versicolor    50 4.260
+## 3  virginica    50 5.552
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Similary, let's suppose we don't need all columns/fields for an analysis. For example, maybe we're only interesting in the sepal width for one particular analysis. Instead of loading all the data into memory, we can use &lt;code&gt;mongolite&lt;/code&gt; to only return chosen fields:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;sw &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kt"&gt;c&lt;/span&gt;&lt;span class="o"&gt;$&lt;/span&gt;find&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;#39;{}&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;{&amp;quot;SepalWidth&amp;quot;: 1, &amp;quot;Species&amp;quot;: 1, &amp;quot;_id&amp;quot;: 0}&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="c1"&gt;## &lt;/span&gt;
+ Found &lt;span class="m"&gt;150&lt;/span&gt; records...
+ Imported &lt;span class="m"&gt;150&lt;/span&gt; records. Simplifying into dataframe...
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;ggplot&lt;span class="p"&gt;(&lt;/span&gt;sw&lt;span class="p"&gt;,&lt;/span&gt; aes&lt;span class="p"&gt;(&lt;/span&gt;x &lt;span class="o"&gt;=&lt;/span&gt; Species&lt;span class="p"&gt;,&lt;/span&gt; y &lt;span class="o"&gt;=&lt;/span&gt; SepalWidth&lt;span class="p"&gt;))&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; 
+         geom_boxplot&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;&lt;img alt="" src="figure/mongolite/sepalwidth_plot-1.png"&gt; &lt;/p&gt;
+&lt;p&gt;Of course, you can also update and remove entries in your database, as well as other functions. If you'd like to know more, have a look at the package on &lt;a href="https://github.com/jeroenooms/mongolite"&gt;github&lt;/a&gt; and &lt;a href="http://cran.r-project.org/web/packages/mongolite/"&gt;CRAN&lt;/a&gt;.&lt;/p&gt;</content><category term="mongodb"></category><category term="R"></category></entry><entry><title>Hello World!</title><link href="/hello-world.html" rel="alternate"></link><published>2015-05-17T00:00:00+00:00</published><updated>2015-05-17T00:00:00+00:00</updated><author><name></name></author><id>tag:None,2015-05-17:/hello-world.html</id><summary type="html">&lt;p&gt;I finally managed to put up a blog! &lt;/p&gt;
+&lt;p&gt;From time to time, I will write some blog posts about statistics, data wrangling, visualization and other things in R and Python. &lt;/p&gt;
+&lt;p&gt;The website is still work in progress, so feel free to contact me if you have any questions not answered …&lt;/p&gt;</summary><content type="html">&lt;p&gt;I finally managed to put up a blog! &lt;/p&gt;
+&lt;p&gt;From time to time, I will write some blog posts about statistics, data wrangling, visualization and other things in R and Python. &lt;/p&gt;
+&lt;p&gt;The website is still work in progress, so feel free to contact me if you have any questions not answered on the site yet!&lt;/p&gt;</content></entry></feed>
