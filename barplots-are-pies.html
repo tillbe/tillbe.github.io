@@ -27,6 +27,7 @@
             <meta property="article:author" content="Till Bergmann" />
 
 
+
     <!-- Bootstrap -->
         <link rel="stylesheet" href="./theme/css/bootstrap.readable.min.css" type="text/css"/>
     <link href="./theme/css/font-awesome.min.css" rel="stylesheet">
@@ -37,13 +38,11 @@
 
 
 
-
-
 </head>
 <body>
 
 <div class="navbar navbar-default navbar-fixed-top" role="navigation">
-	<div class="container">
+    <div class="container">
         <div class="navbar-header">
             <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-ex1-collapse">
                 <span class="sr-only">Toggle navigation</span>
@@ -72,8 +71,11 @@ Till Bergmann            </a>
         <!-- /.navbar-collapse -->
     </div>
 </div> <!-- /.navbar -->
+
 <!-- Banner -->
 <!-- End Banner -->
+
+<!-- Content Container -->
 <div class="container">
     <div class="row">
         <div class="col-sm-9">
@@ -116,88 +118,88 @@ Till Bergmann            </a>
 </ul>
 <p>In this post, I want to recreate some of the points made in the paper, and show some hands-on R code to illustrate the disadvantages of bar plots (and summary statistics, for that matter). </p>
 <p>Let's load some necessary packages for our analysis...</p>
-<div class="highlight"><pre><span></span><span class="kn">library</span><span class="p">(</span>dplyr<span class="p">)</span>
-<span class="kn">library</span><span class="p">(</span>ggplot2<span class="p">)</span>
+<div class="highlight"><pre><span></span><span class="nf">library</span><span class="p">(</span><span class="n">dplyr</span><span class="p">)</span>
+<span class="nf">library</span><span class="p">(</span><span class="n">ggplot2</span><span class="p">)</span>
 </pre></div>
 
 
 <p>... and display some information about our sample data:</p>
-<div class="highlight"><pre><span></span><span class="kp">summary</span><span class="p">(</span>df<span class="p">)</span>
+<div class="highlight"><pre><span></span><span class="nf">summary</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
 </pre></div>
 
 
-<div class="highlight"><pre><span></span>##     group                 rt       
-##  Length:40          Min.   :14.69  
-##  Class :character   1st Qu.:20.51  
-##  Mode  :character   Median :24.09  
-##                     Mean   :23.87  
-##                     3rd Qu.:26.42  
-##                     Max.   :30.95
+<div class="highlight"><pre><span></span><span class="o">##</span>     <span class="k">group</span>                 <span class="n">rt</span>       
+<span class="o">##</span>  <span class="k">Length</span><span class="p">:</span><span class="mi">40</span>          <span class="k">Min</span><span class="p">.</span>   <span class="p">:</span><span class="mi">14</span><span class="p">.</span><span class="mi">69</span>  
+<span class="o">##</span>  <span class="k">Class</span> <span class="p">:</span><span class="nb">character</span>   <span class="mi">1</span><span class="n">st</span> <span class="n">Qu</span><span class="p">.:</span><span class="mi">20</span><span class="p">.</span><span class="mi">51</span>  
+<span class="o">##</span>  <span class="k">Mode</span>  <span class="p">:</span><span class="nb">character</span>   <span class="n">Median</span> <span class="p">:</span><span class="mi">24</span><span class="p">.</span><span class="mi">09</span>  
+<span class="o">##</span>                     <span class="n">Mean</span>   <span class="p">:</span><span class="mi">23</span><span class="p">.</span><span class="mi">87</span>  
+<span class="o">##</span>                     <span class="mi">3</span><span class="n">rd</span> <span class="n">Qu</span><span class="p">.:</span><span class="mi">26</span><span class="p">.</span><span class="mi">42</span>  
+<span class="o">##</span>                     <span class="k">Max</span><span class="p">.</span>   <span class="p">:</span><span class="mi">30</span><span class="p">.</span><span class="mi">95</span>
 </pre></div>
 
 
 <p>In this example, the test data consists of two variables: <code>rt</code> representing reaction times, and <code>group</code> representing gender (<code>male</code> or <code>gender</code>). Let's pretend that we're interested in the differences in reaction times between the two genders (for whatever reason; I'm incredibly uncreative). I included the code to generate the data at the bottom of the post, but for now, let's not look at it. The code actually reveals some of the points I'm going to make later on, so please be patient! (When you analyze your experimental data, you don't know the underlying process either!)</p>
 <p>To explore the data further, we can look at the mean and standard deviation of the reaction times in both groups:</p>
-<div class="highlight"><pre><span></span>agg <span class="o">=</span> df <span class="o">%&gt;%</span>
-    group_by<span class="p">(</span>group<span class="p">)</span> <span class="o">%&gt;%</span>
-    summarise<span class="p">(</span>mean <span class="o">=</span> <span class="kp">mean</span><span class="p">(</span>rt<span class="p">),</span> sd <span class="o">=</span> sd<span class="p">(</span>rt<span class="p">))</span>
-agg
+<div class="highlight"><pre><span></span><span class="n">agg</span> <span class="o">=</span> <span class="n">df</span> <span class="o">%&gt;%</span>
+    <span class="nf">group_by</span><span class="p">(</span><span class="n">group</span><span class="p">)</span> <span class="o">%&gt;%</span>
+    <span class="nf">summarise</span><span class="p">(</span><span class="n">mean</span> <span class="o">=</span> <span class="nf">mean</span><span class="p">(</span><span class="n">rt</span><span class="p">),</span> <span class="n">sd</span> <span class="o">=</span> <span class="nf">sd</span><span class="p">(</span><span class="n">rt</span><span class="p">))</span>
+<span class="n">agg</span>
 </pre></div>
 
 
-<div class="highlight"><pre><span></span>## Source: local data frame [2 x 3]
-## 
-##    group     mean       sd
-##    (chr)    (dbl)    (dbl)
-## 1 female 20.38384 2.625257
-## 2   male 27.36450 2.670447
+<div class="highlight"><pre><span></span><span class="o">##</span> <span class="k">Source</span><span class="p">:</span> <span class="k">local</span> <span class="k">data</span> <span class="n">frame</span> <span class="p">[</span><span class="mi">2</span> <span class="n">x</span> <span class="mi">3</span><span class="p">]</span>
+<span class="o">##</span> 
+<span class="o">##</span>    <span class="k">group</span>     <span class="n">mean</span>       <span class="n">sd</span>
+<span class="o">##</span>    <span class="p">(</span><span class="n">chr</span><span class="p">)</span>    <span class="p">(</span><span class="n">dbl</span><span class="p">)</span>    <span class="p">(</span><span class="n">dbl</span><span class="p">)</span>
+<span class="o">##</span> <span class="mi">1</span> <span class="n">female</span> <span class="mi">20</span><span class="p">.</span><span class="mi">38384</span> <span class="mi">2</span><span class="p">.</span><span class="mi">625257</span>
+<span class="o">##</span> <span class="mi">2</span>   <span class="n">male</span> <span class="mi">27</span><span class="p">.</span><span class="mi">36450</span> <span class="mi">2</span><span class="p">.</span><span class="mi">670447</span>
 </pre></div>
 
 
 <p>From the aggregated data, we can see that the mean for males is higher than for females, but both have roughly the same standard deviation. This might lead us to the conclusion that males (for whatever reason) take longer to react to our experimental stimuli than females. In fact, if we run a simple <em>t</em>-test, we get a significant difference:</p>
-<div class="highlight"><pre><span></span><span class="kp">with</span><span class="p">(</span>df<span class="p">,</span> t.test<span class="p">(</span>rt<span class="o">~</span>group<span class="p">))</span>
+<div class="highlight"><pre><span></span><span class="nf">with</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="nf">t.test</span><span class="p">(</span><span class="n">rt</span><span class="o">~</span><span class="n">group</span><span class="p">))</span>
 </pre></div>
 
 
-<div class="highlight"><pre><span></span>## 
-##  Welch Two Sample t-test
-## 
-## data:  rt by group
-## t = -8.3366, df = 37.989, p-value = 4.153e-10
-## alternative hypothesis: true difference in means is not equal to 0
-## 95 percent confidence interval:
-##  -8.675816 -5.285512
-## sample estimates:
-## mean in group female   mean in group male 
-##             20.38384             27.36450
+<div class="highlight"><pre><span></span><span class="o">##</span> 
+<span class="o">##</span>  <span class="n">Welch</span> <span class="n">Two</span> <span class="n">Sample</span> <span class="n">t</span><span class="o">-</span><span class="n">test</span>
+<span class="o">##</span> 
+<span class="o">##</span> <span class="k">data</span><span class="p">:</span>  <span class="n">rt</span> <span class="k">by</span> <span class="k">group</span>
+<span class="o">##</span> <span class="n">t</span> <span class="o">=</span> <span class="o">-</span><span class="mi">8</span><span class="p">.</span><span class="mi">3366</span><span class="p">,</span> <span class="n">df</span> <span class="o">=</span> <span class="mi">37</span><span class="p">.</span><span class="mi">989</span><span class="p">,</span> <span class="n">p</span><span class="o">-</span><span class="n">value</span> <span class="o">=</span> <span class="mi">4</span><span class="p">.</span><span class="mi">153</span><span class="n">e</span><span class="o">-</span><span class="mi">10</span>
+<span class="o">##</span> <span class="n">alternative</span> <span class="n">hypothesis</span><span class="p">:</span> <span class="k">true</span> <span class="n">difference</span> <span class="k">in</span> <span class="n">means</span> <span class="k">is</span> <span class="k">not</span> <span class="n">equal</span> <span class="k">to</span> <span class="mi">0</span>
+<span class="o">##</span> <span class="mi">95</span> <span class="n">percent</span> <span class="n">confidence</span> <span class="nb">interval</span><span class="p">:</span>
+<span class="o">##</span>  <span class="o">-</span><span class="mi">8</span><span class="p">.</span><span class="mi">675816</span> <span class="o">-</span><span class="mi">5</span><span class="p">.</span><span class="mi">285512</span>
+<span class="o">##</span> <span class="n">sample</span> <span class="n">estimates</span><span class="p">:</span>
+<span class="o">##</span> <span class="n">mean</span> <span class="k">in</span> <span class="k">group</span> <span class="n">female</span>   <span class="n">mean</span> <span class="k">in</span> <span class="k">group</span> <span class="n">male</span> 
+<span class="o">##</span>             <span class="mi">20</span><span class="p">.</span><span class="mi">38384</span>             <span class="mi">27</span><span class="p">.</span><span class="mi">36450</span>
 </pre></div>
 
 
 <p>However, is this enough for us to conclude that there actually is a difference between genders? Let's try and visualize the data to find out more about the reaction times and its distribution.</p>
 <p>As stated above, a common method is to use a bar plot:</p>
-<div class="highlight"><pre><span></span>ggplot<span class="p">(</span>agg<span class="p">,</span> aes<span class="p">(</span>y<span class="o">=</span><span class="kp">mean</span><span class="p">,</span> x<span class="o">=</span>group<span class="p">,</span> fill <span class="o">=</span> group<span class="p">))</span> <span class="o">+</span>
-  geom_bar<span class="p">(</span>stat <span class="o">=</span> <span class="s">&quot;identity&quot;</span><span class="p">,</span> position <span class="o">=</span> <span class="s">&quot;dodge&quot;</span><span class="p">)</span> <span class="o">+</span>
-  geom_errorbar<span class="p">(</span>aes<span class="p">(</span>ymax <span class="o">=</span> mean <span class="o">+</span> sd<span class="p">,</span> ymin <span class="o">=</span> mean <span class="o">-</span> sd <span class="p">),</span> width <span class="o">=</span> <span class="m">0.25</span><span class="p">)</span> <span class="o">+</span>
-  ggtitle<span class="p">(</span><span class="s">&quot;Common bar plot&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><span class="nf">ggplot</span><span class="p">(</span><span class="n">agg</span><span class="p">,</span> <span class="nf">aes</span><span class="p">(</span><span class="n">y</span><span class="o">=</span><span class="n">mean</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">group</span><span class="p">,</span> <span class="n">fill</span> <span class="o">=</span> <span class="n">group</span><span class="p">))</span> <span class="o">+</span>
+  <span class="nf">geom_bar</span><span class="p">(</span><span class="n">stat</span> <span class="o">=</span> <span class="s">&quot;identity&quot;</span><span class="p">,</span> <span class="n">position</span> <span class="o">=</span> <span class="s">&quot;dodge&quot;</span><span class="p">)</span> <span class="o">+</span>
+  <span class="nf">geom_errorbar</span><span class="p">(</span><span class="nf">aes</span><span class="p">(</span><span class="n">ymax</span> <span class="o">=</span> <span class="n">mean</span> <span class="o">+</span> <span class="n">sd</span><span class="p">,</span> <span class="n">ymin</span> <span class="o">=</span> <span class="n">mean</span> <span class="o">-</span> <span class="n">sd</span> <span class="p">),</span> <span class="n">width</span> <span class="o">=</span> <span class="m">0.25</span><span class="p">)</span> <span class="o">+</span>
+  <span class="nf">ggtitle</span><span class="p">(</span><span class="s">&quot;Common bar plot&quot;</span><span class="p">)</span>
 </pre></div>
 
 
 <p><img alt="" src="figure/barplots-are-pies/barplot-1.png"></p>
 <p>Note that the plot doesn't give us more information than the aggregated data frame <code>agg</code>! In fact, one could argue that the raw numbers are more precise and informative than the bar plot. However, this is what we often find in the literature. A slightly different visual representation showing the same information is this plot:</p>
-<div class="highlight"><pre><span></span>ggplot<span class="p">(</span>agg<span class="p">,</span> aes<span class="p">(</span>y<span class="o">=</span><span class="kp">mean</span><span class="p">,</span> x<span class="o">=</span>group<span class="p">,</span> col <span class="o">=</span> group<span class="p">))</span> <span class="o">+</span>
-  geom_point<span class="p">(</span>size <span class="o">=</span> <span class="m">5</span><span class="p">)</span> <span class="o">+</span>
-  geom_errorbar<span class="p">(</span>aes<span class="p">(</span>ymax <span class="o">=</span> mean <span class="o">+</span> sd<span class="p">,</span> ymin <span class="o">=</span> mean <span class="o">-</span>sd <span class="p">),</span> 
-                width <span class="o">=</span> <span class="m">0.25</span><span class="p">)</span> <span class="o">+</span>
-  ylim<span class="p">(</span><span class="m">0</span><span class="p">,</span> <span class="m">32</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><span class="nf">ggplot</span><span class="p">(</span><span class="n">agg</span><span class="p">,</span> <span class="nf">aes</span><span class="p">(</span><span class="n">y</span><span class="o">=</span><span class="n">mean</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">group</span><span class="p">,</span> <span class="n">col</span> <span class="o">=</span> <span class="n">group</span><span class="p">))</span> <span class="o">+</span>
+  <span class="nf">geom_point</span><span class="p">(</span><span class="n">size</span> <span class="o">=</span> <span class="m">5</span><span class="p">)</span> <span class="o">+</span>
+  <span class="nf">geom_errorbar</span><span class="p">(</span><span class="nf">aes</span><span class="p">(</span><span class="n">ymax</span> <span class="o">=</span> <span class="n">mean</span> <span class="o">+</span> <span class="n">sd</span><span class="p">,</span> <span class="n">ymin</span> <span class="o">=</span> <span class="n">mean</span> <span class="o">-</span><span class="n">sd</span> <span class="p">),</span> 
+                <span class="n">width</span> <span class="o">=</span> <span class="m">0.25</span><span class="p">)</span> <span class="o">+</span>
+  <span class="nf">ylim</span><span class="p">(</span><span class="m">0</span><span class="p">,</span> <span class="m">32</span><span class="p">)</span>
 </pre></div>
 
 
 <p><img alt="" src="figure/barplots-are-pies/meanplot-1.png"></p>
 <p>The only advantage of this plot is a more economoc data-ink ratio, but it doesn't give us any more idea about the distribution of the data than the bar plot (they also look like the TIE fighers in Star Wars...). Box plots, on the other hand, provide more information about the underlying distribution, emphasizing interquartile ranges and the median (see <code>ggplot2</code>'s <a href="http://docs.ggplot2.org/0.9.3.1/geom_boxplot.html">help page</a> for more info):</p>
-<div class="highlight"><pre><span></span>ggplot<span class="p">(</span>df<span class="p">,</span> aes<span class="p">(</span>x <span class="o">=</span> group<span class="p">,</span> y <span class="o">=</span> rt<span class="p">,</span> col <span class="o">=</span>group<span class="p">))</span> <span class="o">+</span>
-  stat_boxplot<span class="p">(</span>geom <span class="o">=</span><span class="s">&#39;errorbar&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="c1"># adds whiskers to the lines</span>
-  geom_boxplot<span class="p">()</span> <span class="o">+</span>
-  ggtitle<span class="p">(</span><span class="s">&quot;Boxplot&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><span class="nf">ggplot</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="nf">aes</span><span class="p">(</span><span class="n">x</span> <span class="o">=</span> <span class="n">group</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">rt</span><span class="p">,</span> <span class="n">col</span> <span class="o">=</span><span class="n">group</span><span class="p">))</span> <span class="o">+</span>
+  <span class="nf">stat_boxplot</span><span class="p">(</span><span class="n">geom</span> <span class="o">=</span><span class="s">&#39;errorbar&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="c1"># adds whiskers to the lines</span>
+  <span class="nf">geom_boxplot</span><span class="p">()</span> <span class="o">+</span>
+  <span class="nf">ggtitle</span><span class="p">(</span><span class="s">&quot;Boxplot&quot;</span><span class="p">)</span>
 </pre></div>
 
 
@@ -205,10 +207,10 @@ agg
 <p>What information does the box plot add? Well, we can see that for females, we get values as low as below 15, and as high as above 25. Most of the datapoints seem to be between 19 and 23. For males, the data seems to be tighter, between 24 and 32 (despite the same standard variation!?)<br>
 While the box plot is a definitive improvement over the two previous plots, it still doesn't show us the whole distribution: What exactly is going on between the first and third quantile? How many data points are between 15 and 19 (the bottom whisker for females)?<br>
 How can we visualize all this information? Univariate dot plots! Simply plot all the data points individually, and jitter them around a little to avoid overlap:</p>
-<div class="highlight"><pre><span></span>gp <span class="o">=</span> ggplot<span class="p">(</span>df<span class="p">,</span> aes<span class="p">(</span>x <span class="o">=</span> group<span class="p">,</span> y <span class="o">=</span> rt<span class="p">,</span> col <span class="o">=</span> group<span class="p">))</span> <span class="o">+</span> 
-     geom_point<span class="p">(</span>size <span class="o">=</span> <span class="m">3</span><span class="p">,</span> 
-                position <span class="o">=</span> position_jitter<span class="p">(</span>width <span class="o">=</span> <span class="m">.25</span><span class="p">))</span> 
-gp <span class="o">+</span> ggtitle<span class="p">(</span><span class="s">&quot;Univariate Dotplot&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><span class="n">gp</span> <span class="o">=</span> <span class="nf">ggplot</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="nf">aes</span><span class="p">(</span><span class="n">x</span> <span class="o">=</span> <span class="n">group</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">rt</span><span class="p">,</span> <span class="n">col</span> <span class="o">=</span> <span class="n">group</span><span class="p">))</span> <span class="o">+</span> 
+     <span class="nf">geom_point</span><span class="p">(</span><span class="n">size</span> <span class="o">=</span> <span class="m">3</span><span class="p">,</span> 
+                <span class="n">position</span> <span class="o">=</span> <span class="nf">position_jitter</span><span class="p">(</span><span class="n">width</span> <span class="o">=</span> <span class="m">.25</span><span class="p">))</span> 
+<span class="n">gp</span> <span class="o">+</span> <span class="nf">ggtitle</span><span class="p">(</span><span class="s">&quot;Univariate Dotplot&quot;</span><span class="p">)</span>
 </pre></div>
 
 
@@ -216,10 +218,10 @@ gp <span class="o">+</span> ggtitle<span class="p">(</span><span class="s">&quot
 <p>Woah. The distribution for males is bimodal! Probably not a huge surprise if you looked at how we generated the data (you didn't peek, did you?), but not possible to see on any of the previous plots or the summary statistics. Why do we care that the data is bimodal? Maybe it's just fluke, and there is no deeper reason behind it. Maybe there is a latent variable that influences reaction times more than gender - maybe age, or exposure to whatever you're testing. Maybe participants in one group got distracted at some point, delaying their reaction time; or the computer didn't record the data properly. All of these (and more!) could be valid reasons, and need to be considered.</p>
 <p>The dot plot additionally shows the distribution of the individual points (to check for outliers) and the sample size.  In this case, the sample size of the two groups is the same, but it could very well be different. </p>
 <p>If needed, you can also add measures of central tendencies such as the mean yourself. This makes it even more apparent that the male distribution is bimodal:</p>
-<div class="highlight"><pre><span></span>gp <span class="o">+</span> geom_errorbar<span class="p">(</span>stat <span class="o">=</span> <span class="s">&quot;hline&quot;</span><span class="p">,</span> yintercept <span class="o">=</span> <span class="s">&quot;mean&quot;</span><span class="p">,</span>
-                   aes<span class="p">(</span>ymax<span class="o">=</span><span class="m">..</span>y..<span class="p">,</span>ymin<span class="o">=</span><span class="m">..</span>y..<span class="p">),</span>
-                   width <span class="o">=</span> <span class="m">0.5</span><span class="p">,</span> col <span class="o">=</span> <span class="s">&quot;black&quot;</span><span class="p">)</span> <span class="o">+</span>
-    ggtitle<span class="p">(</span><span class="s">&quot;Dot plot with mean&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><span class="n">gp</span> <span class="o">+</span> <span class="nf">geom_errorbar</span><span class="p">(</span><span class="n">stat</span> <span class="o">=</span> <span class="s">&quot;hline&quot;</span><span class="p">,</span> <span class="n">yintercept</span> <span class="o">=</span> <span class="s">&quot;mean&quot;</span><span class="p">,</span>
+                   <span class="nf">aes</span><span class="p">(</span><span class="n">ymax</span><span class="o">=</span><span class="n">..y..</span><span class="p">,</span><span class="n">ymin</span><span class="o">=</span><span class="n">..y..</span><span class="p">),</span>
+                   <span class="n">width</span> <span class="o">=</span> <span class="m">0.5</span><span class="p">,</span> <span class="n">col</span> <span class="o">=</span> <span class="s">&quot;black&quot;</span><span class="p">)</span> <span class="o">+</span>
+    <span class="nf">ggtitle</span><span class="p">(</span><span class="s">&quot;Dot plot with mean&quot;</span><span class="p">)</span>
 </pre></div>
 
 
@@ -227,11 +229,11 @@ gp <span class="o">+</span> ggtitle<span class="p">(</span><span class="s">&quot
 <h3>Alternative: Cleveland Dot Plot</h3>
 <p>Another way to plot distributions nicely is the Cleveland dot plot, which is very similar to the univariate dot plot describe above - but the axes are flipped and the <code>rt</code> values are plotted against the observation index (see <a name=cite-Zuur_2009></a><a href="#bib-Zuur_2009">Zuur, Ieno, and Elphick (2009)</a>). Here, values that are either far right or left are considered outliers. The bimodal distribution is clearly visible.<br>
 Plotting against the observation index can be helpful in analyzing why the distribution is bimodal. In these data, reaction times for females are higher for later observations - maybe there is a reason for that? </p>
-<div class="highlight"><pre><span></span>ggplot<span class="p">(</span>df<span class="p">,</span> aes<span class="p">(</span>x <span class="o">=</span> rt<span class="p">,</span> y <span class="o">=</span> <span class="m">1</span><span class="o">:</span><span class="kp">length</span><span class="p">(</span>rt<span class="p">),</span> col <span class="o">=</span> group<span class="p">))</span> <span class="o">+</span> 
-  geom_point<span class="p">(</span>size <span class="o">=</span> <span class="m">3</span><span class="p">)</span> <span class="o">+</span>
-  ggtitle<span class="p">(</span><span class="s">&quot;Cleveland Dot Plot&quot;</span><span class="p">)</span> <span class="o">+</span>
-  facet_grid<span class="p">(</span><span class="o">~</span>group<span class="p">)</span> <span class="o">+</span>
-  ylab<span class="p">(</span><span class="s">&quot;Observation&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><span class="nf">ggplot</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="nf">aes</span><span class="p">(</span><span class="n">x</span> <span class="o">=</span> <span class="n">rt</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="m">1</span><span class="o">:</span><span class="nf">length</span><span class="p">(</span><span class="n">rt</span><span class="p">),</span> <span class="n">col</span> <span class="o">=</span> <span class="n">group</span><span class="p">))</span> <span class="o">+</span> 
+  <span class="nf">geom_point</span><span class="p">(</span><span class="n">size</span> <span class="o">=</span> <span class="m">3</span><span class="p">)</span> <span class="o">+</span>
+  <span class="nf">ggtitle</span><span class="p">(</span><span class="s">&quot;Cleveland Dot Plot&quot;</span><span class="p">)</span> <span class="o">+</span>
+  <span class="nf">facet_grid</span><span class="p">(</span><span class="o">~</span><span class="n">group</span><span class="p">)</span> <span class="o">+</span>
+  <span class="nf">ylab</span><span class="p">(</span><span class="s">&quot;Observation&quot;</span><span class="p">)</span>
 </pre></div>
 
 
@@ -254,12 +256,12 @@ URL:
 <hr>
 <h3>Data generatation</h3>
 <p>Here is how I generated the data:</p>
-<div class="highlight"><pre><span></span><span class="kn">library</span><span class="p">(</span>tidyr<span class="p">)</span>
-<span class="kp">set.seed</span><span class="p">(</span><span class="m">42</span><span class="p">)</span>
-df <span class="o">=</span> <span class="kt">data.frame</span><span class="p">(</span>female <span class="o">=</span>   rnorm<span class="p">(</span><span class="m">20</span><span class="p">,</span> mean <span class="o">=</span> <span class="m">20</span><span class="p">,</span> sd <span class="o">=</span> <span class="m">2.0</span><span class="p">),</span> 
-                male   <span class="o">=</span> <span class="kt">c</span><span class="p">(</span>rnorm<span class="p">(</span><span class="m">10</span><span class="p">,</span> mean <span class="o">=</span> <span class="m">30</span><span class="p">,</span> sd <span class="o">=</span> <span class="m">0.5</span><span class="p">),</span> 
-                           rnorm<span class="p">(</span><span class="m">10</span><span class="p">,</span> mean <span class="o">=</span> <span class="m">25</span><span class="p">,</span> sd <span class="o">=</span> <span class="m">0.5</span><span class="p">)))</span>
-df <span class="o">=</span> gather<span class="p">(</span>df<span class="p">,</span> group<span class="p">,</span> rt<span class="p">)</span>
+<div class="highlight"><pre><span></span><span class="nf">library</span><span class="p">(</span><span class="n">tidyr</span><span class="p">)</span>
+<span class="nf">set.seed</span><span class="p">(</span><span class="m">42</span><span class="p">)</span>
+<span class="n">df</span> <span class="o">=</span> <span class="nf">data.frame</span><span class="p">(</span><span class="n">female</span> <span class="o">=</span>   <span class="nf">rnorm</span><span class="p">(</span><span class="m">20</span><span class="p">,</span> <span class="n">mean</span> <span class="o">=</span> <span class="m">20</span><span class="p">,</span> <span class="n">sd</span> <span class="o">=</span> <span class="m">2.0</span><span class="p">),</span> 
+                <span class="n">male</span>   <span class="o">=</span> <span class="nf">c</span><span class="p">(</span><span class="nf">rnorm</span><span class="p">(</span><span class="m">10</span><span class="p">,</span> <span class="n">mean</span> <span class="o">=</span> <span class="m">30</span><span class="p">,</span> <span class="n">sd</span> <span class="o">=</span> <span class="m">0.5</span><span class="p">),</span> 
+                           <span class="nf">rnorm</span><span class="p">(</span><span class="m">10</span><span class="p">,</span> <span class="n">mean</span> <span class="o">=</span> <span class="m">25</span><span class="p">,</span> <span class="n">sd</span> <span class="o">=</span> <span class="m">0.5</span><span class="p">)))</span>
+<span class="n">df</span> <span class="o">=</span> <span class="nf">gather</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="n">rt</span><span class="p">)</span>
 </pre></div>
             </div>
             <!-- /.entry-content -->
@@ -298,6 +300,8 @@ df <span class="o">=</span> gather<span class="p">(</span>df<span class="p">,</s
         </div>
     </div>
 </div>
+<!-- End Content Container -->
+
 <footer>
    <div class="container">
       <hr>
@@ -317,6 +321,7 @@ df <span class="o">=</span> gather<span class="p">(</span>df<span class="p">,</s
 
 <!-- Enable responsive features in IE8 with Respond.js (https://github.com/scottjehl/Respond) -->
 <script src="./theme/js/respond.min.js"></script>
+
 
 
 

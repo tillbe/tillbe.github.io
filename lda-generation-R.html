@@ -28,6 +28,7 @@
             <meta property="article:author" content="Till Bergmann" />
 
 
+
     <!-- Bootstrap -->
         <link rel="stylesheet" href="./theme/css/bootstrap.readable.min.css" type="text/css"/>
     <link href="./theme/css/font-awesome.min.css" rel="stylesheet">
@@ -38,13 +39,11 @@
 
 
 
-
-
 </head>
 <body>
 
 <div class="navbar navbar-default navbar-fixed-top" role="navigation">
-	<div class="container">
+    <div class="container">
         <div class="navbar-header">
             <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-ex1-collapse">
                 <span class="sr-only">Toggle navigation</span>
@@ -73,8 +72,11 @@ Till Bergmann            </a>
         <!-- /.navbar-collapse -->
     </div>
 </div> <!-- /.navbar -->
+
 <!-- Banner -->
 <!-- End Banner -->
+
+<!-- Content Container -->
 <div class="container">
     <div class="row">
         <div class="col-sm-9">
@@ -116,50 +118,50 @@ Till Bergmann            </a>
 <p>To better understand this, let me explain how LDA thinks documents are generated. To generate a document, sample a topic distribution that represents the probability each topics appears in that document. For each word in the document, assign it a topic from that topic distribution, and then draw a term from the term distribution for that topic. Of course, in reality we do not write articles like that - but it works really well for the discovery of topics. In the next sections, I'll walk through these steps point by point and go into more detail on how these distributions are generated, including R code.</p>
 <h2><strong>Topic Distributions</strong></h2>
 <p>LDA uses a Dirichlet distribution to generate multinomial distributions over topics. A <a href="https://en.wikipedia.org/wiki/Dirichlet_distribution">dirichlet distribtion</a> is a distribution over distributions, that is, instead of a single value, you get back a whole distribution for each sample drawn. The Dirichlet distribution has a parameter <span class="math">\(\alpha\)</span> that influences how this distribution sample looks like. For a practical example, imagine we want to generate a newspaper article, and want to assign it some topics. We can do this easily with this Dirichlet distribution in R, using the <code>rdirichlet</code> function in the <code>MCMCpack</code> package (other packages also provide this function). We will first set the <span class="math">\(\alpha\)</span> parameter to <code>.1</code>, and then explore the effects of varying it a little later. We also have to specify how many topics we want - let's use 10 to not lose track. In application of LDA this tends to be much higher, depending on your data. The number of topics is denoted by <span class="math">\(K\)</span>. We only want one document for now, so we set <span class="math">\(N\)</span>=1. When calling <code>rdirichlet</code>, you need to specify how many draws you want (here, <span class="math">\(N\)</span>), and the <span class="math">\(\alpha\)</span> parameter for each topic. Each topic here has the same <span class="math">\(\alpha\)</span>, although that could vary. </p>
-<div class="highlight"><pre><span></span><span class="kn">library</span><span class="p">(</span>MCMCpack<span class="p">)</span>
-<span class="kn">library</span><span class="p">(</span>pander<span class="p">)</span> 
-<span class="kn">library</span><span class="p">(</span>dplyr<span class="p">)</span>
+<div class="highlight"><pre><span></span><span class="nf">library</span><span class="p">(</span><span class="n">MCMCpack</span><span class="p">)</span>
+<span class="nf">library</span><span class="p">(</span><span class="n">pander</span><span class="p">)</span> 
+<span class="nf">library</span><span class="p">(</span><span class="n">dplyr</span><span class="p">)</span>
 
-<span class="kp">set.seed</span><span class="p">(</span><span class="m">2015</span><span class="p">)</span> <span class="c1"># for reproducibility</span>
+<span class="nf">set.seed</span><span class="p">(</span><span class="m">2015</span><span class="p">)</span> <span class="c1"># for reproducibility</span>
 
-alpha <span class="o">=</span> <span class="m">.1</span>
-N <span class="o">=</span> <span class="m">1</span>
-K <span class="o">=</span> <span class="m">10</span>
-x <span class="o">=</span> rdirichlet<span class="p">(</span>N<span class="p">,</span> <span class="kp">rep</span><span class="p">(</span>alpha<span class="p">,</span> K<span class="p">))</span>  <span class="o">%&gt;%</span> <span class="kp">as.numeric</span><span class="p">()</span>
+<span class="n">alpha</span> <span class="o">=</span> <span class="m">.1</span>
+<span class="n">N</span> <span class="o">=</span> <span class="m">1</span>
+<span class="n">K</span> <span class="o">=</span> <span class="m">10</span>
+<span class="n">x</span> <span class="o">=</span> <span class="nf">rdirichlet</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="nf">rep</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">K</span><span class="p">))</span>  <span class="o">%&gt;%</span> <span class="nf">as.numeric</span><span class="p">()</span>
 
-x
+<span class="n">x</span>
 </pre></div>
 
 
-<div class="highlight"><pre><span></span>##  [1] 3.701350e-12 2.868758e-05 1.328463e-08 4.964977e-03 6.993802e-02
-##  [6] 1.497147e-01 7.943219e-15 6.473852e-01 1.279675e-01 8.875518e-07
+<div class="highlight"><pre><span></span><span class="o">##</span>  <span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="mi">3</span><span class="p">.</span><span class="mi">701350</span><span class="n">e</span><span class="o">-</span><span class="mi">12</span> <span class="mi">2</span><span class="p">.</span><span class="mi">868758</span><span class="n">e</span><span class="o">-</span><span class="mi">05</span> <span class="mi">1</span><span class="p">.</span><span class="mi">328463</span><span class="n">e</span><span class="o">-</span><span class="mi">08</span> <span class="mi">4</span><span class="p">.</span><span class="mi">964977</span><span class="n">e</span><span class="o">-</span><span class="mi">03</span> <span class="mi">6</span><span class="p">.</span><span class="mi">993802</span><span class="n">e</span><span class="o">-</span><span class="mi">02</span>
+<span class="o">##</span>  <span class="p">[</span><span class="mi">6</span><span class="p">]</span> <span class="mi">1</span><span class="p">.</span><span class="mi">497147</span><span class="n">e</span><span class="o">-</span><span class="mi">01</span> <span class="mi">7</span><span class="p">.</span><span class="mi">943219</span><span class="n">e</span><span class="o">-</span><span class="mi">15</span> <span class="mi">6</span><span class="p">.</span><span class="mi">473852</span><span class="n">e</span><span class="o">-</span><span class="mi">01</span> <span class="mi">1</span><span class="p">.</span><span class="mi">279675</span><span class="n">e</span><span class="o">-</span><span class="mi">01</span> <span class="mi">8</span><span class="p">.</span><span class="mi">875518</span><span class="n">e</span><span class="o">-</span><span class="mi">07</span>
 </pre></div>
 
 
-<div class="highlight"><pre><span></span>plot<span class="p">(</span>x<span class="p">,</span> ylab<span class="o">=</span><span class="s">&quot;Probability&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><span class="nf">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">ylab</span><span class="o">=</span><span class="s">&quot;Probability&quot;</span><span class="p">)</span>
 </pre></div>
 
 
 <p><img alt="" src="figure/lda-generation-R/unnamed-chunk-2-1.png"></p>
 <p>By visualizing the distribution, we can see that six values (topics) are close to zero - the document does not contain these. One topic, number 8, is however represented to a high degree. This is the main topic of the document, while others are represented to a smaller degree. </p>
 <p>The <span class="math">\(\alpha\)</span> parameters influences the shape of this distribution, more specifically, how many topics will have a (relatively) high value. In this example, it is fairly low, meaning that one topic has the majority of the probability. If we set the parameter, the distribution will be more even. We can illustrate this easily:</p>
-<div class="highlight"><pre><span></span><span class="kn">library</span><span class="p">(</span>ggplot2<span class="p">)</span>
+<div class="highlight"><pre><span></span><span class="nf">library</span><span class="p">(</span><span class="n">ggplot2</span><span class="p">)</span>
 
-alpha <span class="o">=</span> <span class="kt">c</span><span class="p">(</span><span class="m">0.1</span><span class="p">,</span> <span class="m">0.5</span><span class="p">,</span> <span class="m">1</span><span class="p">,</span> <span class="m">10</span><span class="p">,</span> <span class="m">100</span><span class="p">,</span> <span class="m">1000</span><span class="p">)</span> <span class="c1"># alphas to be tested</span>
+<span class="n">alpha</span> <span class="o">=</span> <span class="nf">c</span><span class="p">(</span><span class="m">0.1</span><span class="p">,</span> <span class="m">0.5</span><span class="p">,</span> <span class="m">1</span><span class="p">,</span> <span class="m">10</span><span class="p">,</span> <span class="m">100</span><span class="p">,</span> <span class="m">1000</span><span class="p">)</span> <span class="c1"># alphas to be tested</span>
 <span class="c1"># get distribution for each apha</span>
-ds <span class="o">=</span> <span class="kp">lapply</span><span class="p">(</span>alpha<span class="p">,</span> <span class="kr">function</span><span class="p">(</span>a<span class="p">)</span> rdirichlet<span class="p">(</span>N<span class="p">,</span> <span class="kp">rep</span><span class="p">(</span>a<span class="p">,</span> K<span class="p">)))</span> 
+<span class="n">ds</span> <span class="o">=</span> <span class="nf">lapply</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="nf">function</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="nf">rdirichlet</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="nf">rep</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">K</span><span class="p">)))</span> 
 <span class="c1"># create a data frame for plotting</span>
-df <span class="o">=</span> ds <span class="o">%&gt;%</span> <span class="kp">unlist</span><span class="p">()</span> <span class="o">%&gt;%</span> 
-            <span class="kp">as.data.frame</span><span class="p">()</span> <span class="o">%&gt;%</span> 
-            mutate<span class="p">(</span>alpha <span class="o">=</span> <span class="kp">rep</span><span class="p">(</span>alpha<span class="p">,</span> each<span class="o">=</span>K<span class="p">))</span> 
-df<span class="o">$</span>topic <span class="o">=</span>  <span class="kp">as.factor</span><span class="p">(</span><span class="kp">rep</span><span class="p">(</span><span class="kt">c</span><span class="p">(</span><span class="m">1</span><span class="o">:</span>K<span class="p">),</span> <span class="kp">length</span><span class="p">(</span>alpha<span class="p">)))</span>
-<span class="kp">names</span><span class="p">(</span>df<span class="p">)[</span><span class="m">1</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;value&quot;</span>
-df<span class="o">$</span>alpha <span class="o">=</span> <span class="kp">as.character</span><span class="p">(</span>df<span class="o">$</span>alpha<span class="p">)</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">ds</span> <span class="o">%&gt;%</span> <span class="nf">unlist</span><span class="p">()</span> <span class="o">%&gt;%</span> 
+            <span class="nf">as.data.frame</span><span class="p">()</span> <span class="o">%&gt;%</span> 
+            <span class="nf">mutate</span><span class="p">(</span><span class="n">alpha</span> <span class="o">=</span> <span class="nf">rep</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">each</span><span class="o">=</span><span class="n">K</span><span class="p">))</span> 
+<span class="n">df</span><span class="o">$</span><span class="n">topic</span> <span class="o">=</span>  <span class="nf">as.factor</span><span class="p">(</span><span class="nf">rep</span><span class="p">(</span><span class="nf">c</span><span class="p">(</span><span class="m">1</span><span class="o">:</span><span class="n">K</span><span class="p">),</span> <span class="nf">length</span><span class="p">(</span><span class="n">alpha</span><span class="p">)))</span>
+<span class="nf">names</span><span class="p">(</span><span class="n">df</span><span class="p">)</span><span class="n">[1]</span> <span class="o">=</span> <span class="s">&quot;value&quot;</span>
+<span class="n">df</span><span class="o">$</span><span class="n">alpha</span> <span class="o">=</span> <span class="nf">as.character</span><span class="p">(</span><span class="n">df</span><span class="o">$</span><span class="n">alpha</span><span class="p">)</span>
 
 <span class="c1"># plot the distributions, by alpha value</span>
-ggplot<span class="p">(</span>df<span class="p">,</span> aes<span class="p">(</span>x<span class="o">=</span>topic<span class="p">,</span> y<span class="o">=</span>value<span class="p">))</span> <span class="o">+</span> 
-  geom_point<span class="p">(</span>size<span class="o">=</span><span class="m">3</span><span class="p">)</span> <span class="o">+</span> 
-  facet_wrap<span class="p">(</span><span class="o">~</span>alpha<span class="p">)</span>
+<span class="nf">ggplot</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="nf">aes</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">topic</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">value</span><span class="p">))</span> <span class="o">+</span> 
+  <span class="nf">geom_point</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="m">3</span><span class="p">)</span> <span class="o">+</span> 
+  <span class="nf">facet_wrap</span><span class="p">(</span><span class="o">~</span><span class="n">alpha</span><span class="p">)</span>
 </pre></div>
 
 
@@ -168,40 +170,40 @@ ggplot<span class="p">(</span>df<span class="p">,</span> aes<span class="p">(</s
 <p>We know now how can can generate a topic distribution for a document. We will follow a similar procedure for the word distributions. Remember, each of the ten topics has a term distribution associated with it. As this distribution is also sampled from a Dirichlet, the procedure will be very similar.</p>
 <h2><strong>Term Distributions</strong></h2>
 <p>Again, we have a parameter to be used with the Dirichlet distribution, this time we'll call it <span class="math">\(\beta\)</span>. This parameter will work in the same way as <span class="math">\(\alpha\)</span> did for the topic distribution. Let's first create a sample corpus of terms we can use to create the distribution over. I used the <code>rcorpora</code> package, which comes with a list of words for different domains, such as birds, proverbs and political parties. We'll use Shakespeare words here.</p>
-<div class="highlight"><pre><span></span><span class="kn">library</span><span class="p">(</span>rcorpora<span class="p">)</span>
-vocab <span class="o">=</span> corpora<span class="p">(</span><span class="s">&quot;words/literature/shakespeare_words&quot;</span><span class="p">)</span><span class="o">$</span>words
-<span class="kp">head</span><span class="p">(</span>vocab<span class="p">)</span> <span class="c1"># some example words</span>
+<div class="highlight"><pre><span></span><span class="nf">library</span><span class="p">(</span><span class="n">rcorpora</span><span class="p">)</span>
+<span class="n">vocab</span> <span class="o">=</span> <span class="nf">corpora</span><span class="p">(</span><span class="s">&quot;words/literature/shakespeare_words&quot;</span><span class="p">)</span><span class="o">$</span><span class="n">words</span>
+<span class="nf">head</span><span class="p">(</span><span class="n">vocab</span><span class="p">)</span> <span class="c1"># some example words</span>
 </pre></div>
 
 
-<div class="highlight"><pre><span></span>## [1] &quot;abstemious&quot;    &quot;academe&quot;       &quot;accommodation&quot; &quot;accused&quot;      
-## [5] &quot;addiction&quot;     &quot;admirable&quot;
+<div class="highlight"><pre><span></span><span class="o">##</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ss">&quot;abstemious&quot;</span>    <span class="ss">&quot;academe&quot;</span>       <span class="ss">&quot;accommodation&quot;</span> <span class="ss">&quot;accused&quot;</span>      
+<span class="o">##</span> <span class="p">[</span><span class="mi">5</span><span class="p">]</span> <span class="ss">&quot;addiction&quot;</span>     <span class="ss">&quot;admirable&quot;</span>
 </pre></div>
 
 
-<div class="highlight"><pre><span></span><span class="kp">length</span><span class="p">(</span>vocab<span class="p">)</span> <span class="c1"># length of the vocabulary</span>
+<div class="highlight"><pre><span></span><span class="nf">length</span><span class="p">(</span><span class="n">vocab</span><span class="p">)</span> <span class="c1"># length of the vocabulary</span>
 </pre></div>
 
 
-<div class="highlight"><pre><span></span>## [1] 320
+<div class="highlight"><pre><span></span><span class="o">##</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="mi">320</span>
 </pre></div>
 
 
 <p>Now let's create a distribution over these words, as not all words are equally likely to pop up in each topic. Of course, this is just a toy example - our real vocabulary is not just restricted to these 320 words Shakespeare used. In LDA, this term distribution is typically denoted by <span class="math">\(\phi\)</span>.</p>
-<div class="highlight"><pre><span></span>sizeVocab <span class="o">=</span> <span class="kp">length</span><span class="p">(</span>vocab<span class="p">)</span>
-beta <span class="o">=</span> <span class="m">.1</span>
-phi <span class="o">=</span> rdirichlet<span class="p">(</span>K<span class="p">,</span> <span class="kp">rep</span><span class="p">(</span><span class="kp">beta</span><span class="p">,</span> sizeVocab<span class="p">))</span>
+<div class="highlight"><pre><span></span><span class="n">sizeVocab</span> <span class="o">=</span> <span class="nf">length</span><span class="p">(</span><span class="n">vocab</span><span class="p">)</span>
+<span class="n">beta</span> <span class="o">=</span> <span class="m">.1</span>
+<span class="n">phi</span> <span class="o">=</span> <span class="nf">rdirichlet</span><span class="p">(</span><span class="n">K</span><span class="p">,</span> <span class="nf">rep</span><span class="p">(</span><span class="n">beta</span><span class="p">,</span> <span class="n">sizeVocab</span><span class="p">))</span>
 <span class="c1"># Plotting distribution for the first topic</span>
-plot<span class="p">(</span>phi<span class="p">[</span><span class="m">1</span><span class="p">,]</span> <span class="o">%&gt;%</span> <span class="kp">as.numeric</span><span class="p">())</span>
+<span class="nf">plot</span><span class="p">(</span><span class="n">phi[1</span><span class="p">,</span><span class="n">]</span> <span class="o">%&gt;%</span> <span class="nf">as.numeric</span><span class="p">())</span>
 </pre></div>
 
 
 <p><img alt="" src="figure/lda-generation-R/unnamed-chunk-5-1.png"></p>
-<div class="highlight"><pre><span></span><span class="kp">dim</span><span class="p">(</span>phi<span class="p">)</span>
+<div class="highlight"><pre><span></span><span class="nf">dim</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span>
 </pre></div>
 
 
-<div class="highlight"><pre><span></span>## [1]  10 320
+<div class="highlight"><pre><span></span><span class="o">##</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span>  <span class="mi">10</span> <span class="mi">320</span>
 </pre></div>
 
 
@@ -210,112 +212,112 @@ plot<span class="p">(</span>phi<span class="p">[</span><span class="m">1</span><
 <h2><strong>Generating documents</strong></h2>
 <p>Now that we know how these two distributions are used, we can generate documents from scratch. Of course, since our vocabulary is just a list of words, we will get incoherent documents back that are not particular insightful. But remember, this is just a toy model. When you use real data, the topics should be coherent.</p>
 <p>Let's first set some additional parameters we need to generate these documents. First, we have to set the number of documents we want to generate. Let's choose <span class="math">\(N=5\)</span>. We also have to decide how long, that is, how many terms should be in each document. Let's set <span class="math">\(NumWords=20\)</span>. This is rather low number, but this way we can still analyze the documents by hand. Let's keep <span class="math">\(K=10\)</span>, and the parameters <span class="math">\(\alpha=50/K=5\)</span> and <span class="math">\(\beta=.1\)</span>. We will use the vocabulary from Shakespeare from the above example.</p>
-<div class="highlight"><pre><span></span>N <span class="o">=</span> <span class="m">5</span>
-NumWords <span class="o">=</span> <span class="m">20</span>
+<div class="highlight"><pre><span></span><span class="n">N</span> <span class="o">=</span> <span class="m">5</span>
+<span class="n">NumWords</span> <span class="o">=</span> <span class="m">20</span>
 
-K <span class="o">=</span> <span class="m">10</span>
-alpha <span class="o">=</span> <span class="m">1</span><span class="o">/</span>K
-beta <span class="o">=</span> <span class="m">.1</span>
+<span class="n">K</span> <span class="o">=</span> <span class="m">10</span>
+<span class="n">alpha</span> <span class="o">=</span> <span class="m">1</span><span class="o">/</span><span class="n">K</span>
+<span class="n">beta</span> <span class="o">=</span> <span class="m">.1</span>
 
-sizeVocab <span class="o">=</span> <span class="kp">length</span><span class="p">(</span>vocab<span class="p">)</span>
+<span class="n">sizeVocab</span> <span class="o">=</span> <span class="nf">length</span><span class="p">(</span><span class="n">vocab</span><span class="p">)</span>
 </pre></div>
 
 
 <p>Once we've set all the parameters, let's create the two distributions, for topics <span class="math">\(\theta\)</span> and terms <span class="math">\(\phi\)</span> respectively.</p>
-<div class="highlight"><pre><span></span>theta <span class="o">=</span> rdirichlet<span class="p">(</span>N<span class="p">,</span> <span class="kp">rep</span><span class="p">(</span>alpha<span class="p">,</span> K<span class="p">))</span>
-<span class="kp">dim</span><span class="p">(</span>theta<span class="p">)</span>
+<div class="highlight"><pre><span></span><span class="n">theta</span> <span class="o">=</span> <span class="nf">rdirichlet</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="nf">rep</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">K</span><span class="p">))</span>
+<span class="nf">dim</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
 </pre></div>
 
 
-<div class="highlight"><pre><span></span>## [1]  5 10
+<div class="highlight"><pre><span></span><span class="o">##</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span>  <span class="mi">5</span> <span class="mi">10</span>
 </pre></div>
 
 
-<div class="highlight"><pre><span></span>phi <span class="o">=</span> rdirichlet<span class="p">(</span>K<span class="p">,</span> <span class="kp">rep</span><span class="p">(</span><span class="kp">beta</span><span class="p">,</span> sizeVocab<span class="p">))</span>
-<span class="kp">dim</span><span class="p">(</span>phi<span class="p">)</span>
+<div class="highlight"><pre><span></span><span class="n">phi</span> <span class="o">=</span> <span class="nf">rdirichlet</span><span class="p">(</span><span class="n">K</span><span class="p">,</span> <span class="nf">rep</span><span class="p">(</span><span class="n">beta</span><span class="p">,</span> <span class="n">sizeVocab</span><span class="p">))</span>
+<span class="nf">dim</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span>
 </pre></div>
 
 
-<div class="highlight"><pre><span></span>## [1]  10 320
+<div class="highlight"><pre><span></span><span class="o">##</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span>  <span class="mi">10</span> <span class="mi">320</span>
 </pre></div>
 
 
 <p>Now remember, to generate a document, we first have to allocate topics to each word in each document. Then we have to sample a terms from that document, and concatenate those words to create the document. Let's do this step by step.</p>
-<div class="highlight"><pre><span></span>i <span class="o">=</span> <span class="m">1</span>
-topics <span class="o">=</span> <span class="kp">sample</span><span class="p">(</span><span class="m">1</span><span class="o">:</span>K<span class="p">,</span>
-          size <span class="o">=</span> NumWords<span class="p">,</span> 
-          replace <span class="o">=</span> <span class="kc">TRUE</span><span class="p">,</span> 
-          prob <span class="o">=</span> theta<span class="p">[</span>i<span class="p">,])</span> 
-topics
+<div class="highlight"><pre><span></span><span class="n">i</span> <span class="o">=</span> <span class="m">1</span>
+<span class="n">topics</span> <span class="o">=</span> <span class="nf">sample</span><span class="p">(</span><span class="m">1</span><span class="o">:</span><span class="n">K</span><span class="p">,</span>
+          <span class="n">size</span> <span class="o">=</span> <span class="n">NumWords</span><span class="p">,</span> 
+          <span class="n">replace</span> <span class="o">=</span> <span class="kc">TRUE</span><span class="p">,</span> 
+          <span class="n">prob</span> <span class="o">=</span> <span class="n">theta[i</span><span class="p">,</span><span class="n">]</span><span class="p">)</span> 
+<span class="n">topics</span>
 </pre></div>
 
 
-<div class="highlight"><pre><span></span>##  [1] 5 5 5 5 5 5 5 5 7 5 5 5 5 5 5 5 7 5 5 5
+<div class="highlight"><pre><span></span><span class="o">##</span>  <span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="mi">5</span> <span class="mi">5</span> <span class="mi">5</span> <span class="mi">5</span> <span class="mi">5</span> <span class="mi">5</span> <span class="mi">5</span> <span class="mi">5</span> <span class="mi">7</span> <span class="mi">5</span> <span class="mi">5</span> <span class="mi">5</span> <span class="mi">5</span> <span class="mi">5</span> <span class="mi">5</span> <span class="mi">5</span> <span class="mi">7</span> <span class="mi">5</span> <span class="mi">5</span> <span class="mi">5</span>
 </pre></div>
 
 
 <p>Our first document (<span class="math">\(i=1\)</span>) consists mainly of terms allocated to either topic number 5 or 7. By inspecting the <span class="math">\(theta\)</span> distribution for that row, we can see that this reflects the distribution:</p>
-<div class="highlight"><pre><span></span>theta<span class="p">[</span><span class="m">1</span><span class="p">,]</span> <span class="o">%&gt;%</span> plot<span class="p">()</span>
+<div class="highlight"><pre><span></span><span class="n">theta[1</span><span class="p">,</span><span class="n">]</span> <span class="o">%&gt;%</span> <span class="nf">plot</span><span class="p">()</span>
 </pre></div>
 
 
 <p><img alt="" src="figure/lda-generation-R/unnamed-chunk-9-1.png"></p>
 <p>Now that we have a topic, let's sample a word from the term distribution <span class="math">\(\phi\)</span>. We test this only for the first topic.</p>
-<div class="highlight"><pre><span></span>j <span class="o">=</span> topics<span class="p">[</span><span class="m">1</span><span class="p">]</span>  <span class="c1"># first topic</span>
-term <span class="o">=</span> <span class="kp">sample</span><span class="p">(</span>vocab<span class="p">,</span> 
-              size <span class="o">=</span> <span class="m">1</span><span class="p">,</span> 
-              prob <span class="o">=</span> phi<span class="p">[</span>j<span class="p">,])</span>
-term
+<div class="highlight"><pre><span></span><span class="n">j</span> <span class="o">=</span> <span class="n">topics[1]</span>  <span class="c1"># first topic</span>
+<span class="n">term</span> <span class="o">=</span> <span class="nf">sample</span><span class="p">(</span><span class="n">vocab</span><span class="p">,</span> 
+              <span class="n">size</span> <span class="o">=</span> <span class="m">1</span><span class="p">,</span> 
+              <span class="n">prob</span> <span class="o">=</span> <span class="n">phi[j</span><span class="p">,</span><span class="n">]</span><span class="p">)</span>
+<span class="n">term</span>
 </pre></div>
 
 
-<div class="highlight"><pre><span></span>## [1] &quot;enrapt&quot;
+<div class="highlight"><pre><span></span><span class="o">##</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ss">&quot;enrapt&quot;</span>
 </pre></div>
 
 
 <p>Alright, we got our first term! To generate the whole document, we have to repeat the steps for each term-position in the document. To generate all documents, we have to do all these steps for all terms in each document. We could achieve this by writing a for-loop, but it's easier using <code>lapply</code> together with functions. Let's first wrap the commands for topic and term generation in functions.</p>
 <div class="highlight"><pre><span></span><span class="c1"># takes a document i and generates a topic distribution</span>
-generateTopics <span class="o">=</span> <span class="kr">function</span><span class="p">(</span>i<span class="p">){</span>
-  topics <span class="o">=</span> <span class="kp">sample</span><span class="p">(</span><span class="m">1</span><span class="o">:</span>K<span class="p">,</span>
-          size <span class="o">=</span> NumWords<span class="p">,</span> 
-          replace <span class="o">=</span> <span class="kc">TRUE</span><span class="p">,</span> 
-          prob <span class="o">=</span> theta<span class="p">[</span>i<span class="p">,])</span> 
-  topics
+<span class="n">generateTopics</span> <span class="o">=</span> <span class="nf">function</span><span class="p">(</span><span class="n">i</span><span class="p">){</span>
+  <span class="n">topics</span> <span class="o">=</span> <span class="nf">sample</span><span class="p">(</span><span class="m">1</span><span class="o">:</span><span class="n">K</span><span class="p">,</span>
+          <span class="n">size</span> <span class="o">=</span> <span class="n">NumWords</span><span class="p">,</span> 
+          <span class="n">replace</span> <span class="o">=</span> <span class="kc">TRUE</span><span class="p">,</span> 
+          <span class="n">prob</span> <span class="o">=</span> <span class="n">theta[i</span><span class="p">,</span><span class="n">]</span><span class="p">)</span> 
+  <span class="n">topics</span>
 <span class="p">}</span>
 
 <span class="c1"># takes a topic j and samples a term from its term distribution</span>
-generateWord <span class="o">=</span> <span class="kr">function</span><span class="p">(</span>j<span class="p">){</span>
-  term <span class="o">=</span> <span class="kp">sample</span><span class="p">(</span>vocab<span class="p">,</span> 
-                size <span class="o">=</span> <span class="m">1</span><span class="p">,</span> 
-                prob <span class="o">=</span> phi<span class="p">[</span>j<span class="p">,])</span>
-  term
+<span class="n">generateWord</span> <span class="o">=</span> <span class="nf">function</span><span class="p">(</span><span class="n">j</span><span class="p">){</span>
+  <span class="n">term</span> <span class="o">=</span> <span class="nf">sample</span><span class="p">(</span><span class="n">vocab</span><span class="p">,</span> 
+                <span class="n">size</span> <span class="o">=</span> <span class="m">1</span><span class="p">,</span> 
+                <span class="n">prob</span> <span class="o">=</span> <span class="n">phi[j</span><span class="p">,</span><span class="n">]</span><span class="p">)</span>
+  <span class="n">term</span>
 <span class="p">}</span>
 
-generateTopics<span class="p">(</span>i<span class="p">)</span>
+<span class="nf">generateTopics</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
 </pre></div>
 
 
-<div class="highlight"><pre><span></span>##  [1] 5 7 5 5 7 5 5 7 5 5 7 5 5 5 5 5 5 5 5 5
+<div class="highlight"><pre><span></span><span class="o">##</span>  <span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="mi">5</span> <span class="mi">7</span> <span class="mi">5</span> <span class="mi">5</span> <span class="mi">7</span> <span class="mi">5</span> <span class="mi">5</span> <span class="mi">7</span> <span class="mi">5</span> <span class="mi">5</span> <span class="mi">7</span> <span class="mi">5</span> <span class="mi">5</span> <span class="mi">5</span> <span class="mi">5</span> <span class="mi">5</span> <span class="mi">5</span> <span class="mi">5</span> <span class="mi">5</span> <span class="mi">5</span>
 </pre></div>
 
 
-<div class="highlight"><pre><span></span>generateWord<span class="p">(</span>j<span class="p">)</span>
+<div class="highlight"><pre><span></span><span class="nf">generateWord</span><span class="p">(</span><span class="n">j</span><span class="p">)</span>
 </pre></div>
 
 
-<div class="highlight"><pre><span></span>## [1] &quot;spectacled&quot;
+<div class="highlight"><pre><span></span><span class="o">##</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ss">&quot;spectacled&quot;</span>
 </pre></div>
 
 
 <p>Because we have to iterate over the topics generated by <code>generateTopics</code>, we'll write another function that will call <code>generateWord</code> on each topic. We can also implement a small command that will string together all the terms to make the output look a little nicer.</p>
-<div class="highlight"><pre><span></span>generateDocument <span class="o">=</span> <span class="kr">function</span><span class="p">(</span>d<span class="p">){</span>
-  topics <span class="o">=</span> generateTopics<span class="p">(</span>d<span class="p">)</span> <span class="c1"># d is the current document</span>
-  terms <span class="o">=</span> <span class="kp">lapply</span><span class="p">(</span>topics<span class="p">,</span> generateWord<span class="p">)</span> <span class="o">%&gt;%</span> <span class="kp">unlist</span><span class="p">()</span> <span class="c1"># for each topic, generate a word</span>
-  document <span class="o">=</span> terms <span class="o">%&gt;%</span> <span class="kp">paste</span><span class="p">(</span><span class="m">.</span><span class="p">,</span> collapse <span class="o">=</span> <span class="s">&quot; &quot;</span><span class="p">)</span> <span class="c1"># string those together</span>
-  document
+<div class="highlight"><pre><span></span><span class="n">generateDocument</span> <span class="o">=</span> <span class="nf">function</span><span class="p">(</span><span class="n">d</span><span class="p">){</span>
+  <span class="n">topics</span> <span class="o">=</span> <span class="nf">generateTopics</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="c1"># d is the current document</span>
+  <span class="n">terms</span> <span class="o">=</span> <span class="nf">lapply</span><span class="p">(</span><span class="n">topics</span><span class="p">,</span> <span class="n">generateWord</span><span class="p">)</span> <span class="o">%&gt;%</span> <span class="nf">unlist</span><span class="p">()</span> <span class="c1"># for each topic, generate a word</span>
+  <span class="n">document</span> <span class="o">=</span> <span class="n">terms</span> <span class="o">%&gt;%</span> <span class="nf">paste</span><span class="p">(</span><span class="n">.,</span> <span class="n">collapse</span> <span class="o">=</span> <span class="s">&quot; &quot;</span><span class="p">)</span> <span class="c1"># string those together</span>
+  <span class="n">document</span>
 <span class="p">}</span>
-documents <span class="o">=</span> <span class="kp">lapply</span><span class="p">(</span><span class="m">1</span><span class="o">:</span>N<span class="p">,</span> generateDocument<span class="p">)</span>
-documents  <span class="o">%&gt;%</span> pander<span class="p">()</span>
+<span class="n">documents</span> <span class="o">=</span> <span class="nf">lapply</span><span class="p">(</span><span class="m">1</span><span class="o">:</span><span class="n">N</span><span class="p">,</span> <span class="n">generateDocument</span><span class="p">)</span>
+<span class="n">documents</span>  <span class="o">%&gt;%</span> <span class="nf">pander</span><span class="p">()</span>
 </pre></div>
 
 
@@ -395,11 +397,14 @@ URL:
     var mathjaxscript = document.createElement('script');
     mathjaxscript.id = 'mathjaxscript_pelican_#%@#$@#';
     mathjaxscript.type = 'text/javascript';
-    mathjaxscript.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML';
-    mathjaxscript[(window.opera ? "innerHTML" : "text")] =
+    mathjaxscript.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.3/latest.js?config=TeX-AMS-MML_HTMLorMML';
+
+    var configscript = document.createElement('script');
+    configscript.type = 'text/x-mathjax-config';
+    configscript[(window.opera ? "innerHTML" : "text")] =
         "MathJax.Hub.Config({" +
         "    config: ['MMLorHTML.js']," +
-        "    TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'AMS' } }," +
+        "    TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'none' } }," +
         "    jax: ['input/TeX','input/MathML','output/HTML-CSS']," +
         "    extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']," +
         "    displayAlign: '"+ align +"'," +
@@ -413,6 +418,8 @@ URL:
         "        preview: 'TeX'," +
         "    }, " +
         "    'HTML-CSS': { " +
+        "        availableFonts: ['STIX', 'TeX']," +
+        "        preferredFont: 'STIX'," +
         "        styles: { '.MathJax_Display, .MathJax .mo, .MathJax .mi, .MathJax .mn': {color: 'inherit ! important'} }," +
         "        linebreaks: { automatic: "+ linebreak +", width: '90% container' }," +
         "    }, " +
@@ -433,6 +440,8 @@ URL:
                 "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
             "});" +
         "}";
+
+    (document.body || document.getElementsByTagName('head')[0]).appendChild(configscript);
     (document.body || document.getElementsByTagName('head')[0]).appendChild(mathjaxscript);
 }
 </script>
@@ -473,6 +482,8 @@ URL:
         </div>
     </div>
 </div>
+<!-- End Content Container -->
+
 <footer>
    <div class="container">
       <hr>
@@ -492,6 +503,7 @@ URL:
 
 <!-- Enable responsive features in IE8 with Respond.js (https://github.com/scottjehl/Respond) -->
 <script src="./theme/js/respond.min.js"></script>
+
 
 
 

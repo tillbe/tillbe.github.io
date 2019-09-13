@@ -28,6 +28,7 @@
             <meta property="article:author" content="Till Bergmann" />
 
 
+
     <!-- Bootstrap -->
         <link rel="stylesheet" href="./theme/css/bootstrap.readable.min.css" type="text/css"/>
     <link href="./theme/css/font-awesome.min.css" rel="stylesheet">
@@ -38,13 +39,11 @@
 
 
 
-
-
 </head>
 <body>
 
 <div class="navbar navbar-default navbar-fixed-top" role="navigation">
-	<div class="container">
+    <div class="container">
         <div class="navbar-header">
             <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-ex1-collapse">
                 <span class="sr-only">Toggle navigation</span>
@@ -73,8 +72,11 @@ Till Bergmann            </a>
         <!-- /.navbar-collapse -->
     </div>
 </div> <!-- /.navbar -->
+
 <!-- Banner -->
 <!-- End Banner -->
+
+<!-- Content Container -->
 <div class="container">
     <div class="row">
         <div class="col-sm-9">
@@ -116,9 +118,124 @@ Till Bergmann            </a>
 * IPython notebook
 *
 */
-/* CSS font colors for translated ANSI colors. */
+/* CSS font colors for translated ANSI escape sequences */
+/* The color values are a mix of
+   http://www.xcolors.net/dl/baskerville-ivorylight and
+   http://www.xcolors.net/dl/euphrasia */
+.ansi-black-fg {
+  color: #3E424D;
+}
+.ansi-black-bg {
+  background-color: #3E424D;
+}
+.ansi-black-intense-fg {
+  color: #282C36;
+}
+.ansi-black-intense-bg {
+  background-color: #282C36;
+}
+.ansi-red-fg {
+  color: #E75C58;
+}
+.ansi-red-bg {
+  background-color: #E75C58;
+}
+.ansi-red-intense-fg {
+  color: #B22B31;
+}
+.ansi-red-intense-bg {
+  background-color: #B22B31;
+}
+.ansi-green-fg {
+  color: #00A250;
+}
+.ansi-green-bg {
+  background-color: #00A250;
+}
+.ansi-green-intense-fg {
+  color: #007427;
+}
+.ansi-green-intense-bg {
+  background-color: #007427;
+}
+.ansi-yellow-fg {
+  color: #DDB62B;
+}
+.ansi-yellow-bg {
+  background-color: #DDB62B;
+}
+.ansi-yellow-intense-fg {
+  color: #B27D12;
+}
+.ansi-yellow-intense-bg {
+  background-color: #B27D12;
+}
+.ansi-blue-fg {
+  color: #208FFB;
+}
+.ansi-blue-bg {
+  background-color: #208FFB;
+}
+.ansi-blue-intense-fg {
+  color: #0065CA;
+}
+.ansi-blue-intense-bg {
+  background-color: #0065CA;
+}
+.ansi-magenta-fg {
+  color: #D160C4;
+}
+.ansi-magenta-bg {
+  background-color: #D160C4;
+}
+.ansi-magenta-intense-fg {
+  color: #A03196;
+}
+.ansi-magenta-intense-bg {
+  background-color: #A03196;
+}
+.ansi-cyan-fg {
+  color: #60C6C8;
+}
+.ansi-cyan-bg {
+  background-color: #60C6C8;
+}
+.ansi-cyan-intense-fg {
+  color: #258F8F;
+}
+.ansi-cyan-intense-bg {
+  background-color: #258F8F;
+}
+.ansi-white-fg {
+  color: #C5C1B4;
+}
+.ansi-white-bg {
+  background-color: #C5C1B4;
+}
+.ansi-white-intense-fg {
+  color: #A1A6B2;
+}
+.ansi-white-intense-bg {
+  background-color: #A1A6B2;
+}
+.ansi-default-inverse-fg {
+  color: #FFFFFF;
+}
+.ansi-default-inverse-bg {
+  background-color: #000000;
+}
+.ansi-bold {
+  font-weight: bold;
+}
+.ansi-underline {
+  text-decoration: underline;
+}
+/* The following styles are deprecated an will be removed in a future version */
 .ansibold {
   font-weight: bold;
+}
+.ansi-inverse {
+  outline: 0.5px dotted;
 }
 /* use dark versions for foreground, to improve visibility */
 .ansiblack {
@@ -197,12 +314,20 @@ div.cell {
   /* This acts as a spacer between cells, that is outside the border */
   margin: 0px;
   outline: none;
-  border-left-width: 1px;
-  padding-left: 5px;
-  background: linear-gradient(to right, transparent -40px, transparent 1px, transparent 1px, transparent 100%);
+  position: relative;
+  overflow: visible;
+}
+div.cell:before {
+  position: absolute;
+  display: block;
+  top: -1px;
+  left: -1px;
+  width: 5px;
+  height: calc(100% +  2px);
+  content: '';
+  background: transparent;
 }
 div.cell.jupyter-soft-selected {
-  border-left-color: #90CAF9;
   border-left-color: #E3F2FD;
   border-left-width: 1px;
   padding-left: 5px;
@@ -215,27 +340,39 @@ div.cell.jupyter-soft-selected {
     border-color: transparent;
   }
 }
-div.cell.selected {
+div.cell.selected,
+div.cell.selected.jupyter-soft-selected {
   border-color: #ababab;
-  border-left-width: 0px;
-  padding-left: 6px;
-  background: linear-gradient(to right, #42A5F5 -40px, #42A5F5 5px, transparent 5px, transparent 100%);
+}
+div.cell.selected:before,
+div.cell.selected.jupyter-soft-selected:before {
+  position: absolute;
+  display: block;
+  top: -1px;
+  left: -1px;
+  width: 5px;
+  height: calc(100% +  2px);
+  content: '';
+  background: #42A5F5;
 }
 @media print {
-  div.cell.selected {
+  div.cell.selected,
+  div.cell.selected.jupyter-soft-selected {
     border-color: transparent;
   }
 }
-div.cell.selected.jupyter-soft-selected {
-  border-left-width: 0;
-  padding-left: 6px;
-  background: linear-gradient(to right, #42A5F5 -40px, #42A5F5 7px, #E3F2FD 7px, #E3F2FD 100%);
-}
 .edit_mode div.cell.selected {
   border-color: #66BB6A;
-  border-left-width: 0px;
-  padding-left: 6px;
-  background: linear-gradient(to right, #66BB6A -40px, #66BB6A 5px, transparent 5px, transparent 100%);
+}
+.edit_mode div.cell.selected:before {
+  position: absolute;
+  display: block;
+  top: -1px;
+  left: -1px;
+  width: 5px;
+  height: calc(100% +  2px);
+  content: '';
+  background: #66BB6A;
 }
 @media print {
   .edit_mode div.cell.selected {
@@ -431,7 +568,9 @@ div.input_area > div.highlight > pre {
 .CodeMirror-lines {
   /* In CM2, this used to be 0.4em, but in CM3 it went to 4px. We need the em value because */
   /* we have set a different line-height and want this to scale with that. */
-  padding: 0.4em;
+  /* Note that this should set vertical padding only, since CodeMirror assumes
+       that horizontal padding will be set on CodeMirror pre */
+  padding: 0.4em 0;
 }
 .CodeMirror-linenumber {
   padding: 0 8px 0 4px;
@@ -441,11 +580,24 @@ div.input_area > div.highlight > pre {
   border-top-left-radius: 2px;
 }
 .CodeMirror pre {
-  /* In CM3 this went to 4px from 0 in CM2. We need the 0 value because of how we size */
-  /* .CodeMirror-lines */
-  padding: 0;
+  /* In CM3 this went to 4px from 0 in CM2. This sets horizontal padding only,
+    use .CodeMirror-lines for vertical */
+  padding: 0 0.4em;
   border: 0;
   border-radius: 0;
+}
+.CodeMirror-cursor {
+  border-left: 1.4px solid black;
+}
+@media screen and (min-width: 2138px) and (max-width: 4319px) {
+  .CodeMirror-cursor {
+    border-left: 2px solid black;
+  }
+}
+@media screen and (min-width: 4320px) {
+  .CodeMirror-cursor {
+    border-left: 4px solid black;
+  }
 }
 /*
 
@@ -693,6 +845,9 @@ div.output_area img.unconfined,
 div.output_area svg.unconfined {
   max-width: none;
 }
+div.output_area .mglyph > img {
+  max-width: none;
+}
 /* This is needed to protect the pre formating from global settings such
    as that of bootstrap */
 .output {
@@ -731,7 +886,7 @@ div.output_area svg.unconfined {
 }
 div.output_area pre {
   margin: 0;
-  padding: 0;
+  padding: 1px 0 1px 0;
   border: 0;
   vertical-align: baseline;
   color: black;
@@ -853,6 +1008,10 @@ div.output_unrecognized a:hover {
 .rendered_html h6:first-child {
   margin-top: 1em;
 }
+.rendered_html ul:not(.list-inline),
+.rendered_html ol:not(.list-inline) {
+  padding-left: 2em;
+}
 
 
 
@@ -869,16 +1028,24 @@ div.output_unrecognized a:hover {
 }
 
 
+
+
+
 .rendered_html pre,
+
 
 
 
 .rendered_html tr,
 .rendered_html th,
 
-.rendered_html td,
 
-
+.rendered_html tbody tr:nth-child(odd) {
+  background: #f5f5f5;
+}
+.rendered_html tbody tr:hover {
+  background: rgba(66, 165, 245, 0.2);
+}
 .rendered_html * + table {
   margin-top: 1em;
 }
@@ -894,6 +1061,11 @@ div.output_unrecognized a:hover {
 
 .rendered_html img.unconfined,
 
+
+.rendered_html * + .alert {
+  margin-top: 1em;
+}
+[dir="rtl"] 
 div.text_cell {
   /* Old browsers */
   display: -webkit-box;
@@ -944,8 +1116,15 @@ h6:hover .anchor-link {
   display: none;
 }
 .text_cell.rendered 
+.text_cell.rendered .rendered_html tr,
+.text_cell.rendered .rendered_html th,
+.text_cell.rendered 
 .text_cell.unrendered .text_cell_render {
   display: none;
+}
+.text_cell .dropzone .input_area {
+  border: 2px dashed #bababa;
+  margin: -1px;
 }
 .cm-header-1,
 .cm-header-2,
@@ -1084,8 +1263,7 @@ h6:hover .anchor-link {
 .ansi-bold { font-weight: bold; }
 </style>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
+</div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>In my <a href="./lda-generation-R.html">last blog post</a>, which was about a million years ago, I described the generative nature of LDA and left the interferential step open. In this blog post, I will explain one method to calculate estimations of the topic distribution $\theta$ and the term distribution $\phi$. This approach, first formulated by Griffiths and Steyvers (2004) in the context of LDA, is to use Gibbs sampling, a common algorithm within the Markov Chain Monte Carlo (MCMC) family of sampling algorithms. Before applying Gibbs sampling directly to LDA, I will first give a short introduction to Gibbs sampling more generally.</p>
 <h2 id="Gibbs-Sampling">Gibbs Sampling<a class="anchor-link" href="#Gibbs-Sampling">&#182;</a></h2><p>Gibbs sampling is useful when it is difficult (or impossible) to draw samples from a joint distribution of multiple variables, but easy to draw samples from conditional distributions. Let us assume our model has two parameters, $\theta_1$ and $\theta_2$. Under Bayesian inference, the parameter space for the variables is the joint distribution of the parameters, $P(\theta_1, \theta_2 ~|~ D)$, where $D$ is the data provided. This joint distribution can take any form. One artificial complex example is shown in Figure 1 below. When the number of parameters increase, this joint distribution becomes more and more complex, and is often impossible to solve analytically. The approach taken in Gibbs sampling is instead to sample from the conditional probability distributions $P(\theta_i~|~{\theta{j\ne i}},D)$. In the case of two parameters, the conditional probabilities are $P(\theta_1~|~{\theta_2},D)$ and $P(\theta_2~|~{\theta_1},D)$. Essentially, this equates to taking a random walk through the parameter space. More time is spend in regions of the space that are more likely.</p>
@@ -1094,8 +1272,7 @@ h6:hover .anchor-link {
 </div>
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
+</div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <figure>
   <img src="figure/lda-gibbs-toy/joint_distribution.png">
@@ -1105,8 +1282,7 @@ h6:hover .anchor-link {
 </div>
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
+</div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>In each step of the Gibbs sampling procedure, a new value for a parameter is sampled according to its distribution conditioned on all <em>other</em> variables. This happens by cycling through all parameters sequentially. The updated values are immediately used as soon as they are updated. If the there are three parameters, $\theta_1, \theta_2, \theta_3$, the algorithm can be summed up as follows:</p>
 <ol>
@@ -1124,16 +1300,14 @@ h6:hover .anchor-link {
 </div>
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
+</div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <h2 id="Gibbs-sampling-applied-to-LDA">Gibbs sampling applied to LDA<a class="anchor-link" href="#Gibbs-sampling-applied-to-LDA">&#182;</a></h2>
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
+</div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>Instead of finding estimates for the posterior distributions of $\theta$ and  $\phi$, Griffiths and Steyvers (2004) use an alternative approach of estimating the posterior distribution over the assignments of word tokens to topics, $z$, as both $\theta$ and  $\phi$ can be calculated from $z$. For each word token $i$, $z_i$ is an integer value $[1 \ldots T]$ representing the topic that it is assigned to. Once the topic assignment is known for each word token, we can easily calculate the distributions $\theta_d$ for each document and $\phi_j$ for each topic, as we know the words in each document.</p>
 <p>Using Gibbs sampling, each document $d_i$ and each word token in that document $w_{di}$ is considered in turn, and its topic assignment $z_i$ computed conditioned on the topic assignment on all other word tokens. In other words, the probability that a specific topic $j$ is assigned to the current word $w_{di}$ depends on the probability that the same word has been assigned that topic in other positions in the corpus.<a name="eq:gibbs"></a> Formally, this posterior can be written as:</p>
@@ -1146,8 +1320,7 @@ $$
 </div>
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
+</div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>where $\cdot$ is all other known information, such as the Dirichlet priors and all other words $w_{-i}$ and documents $d_{-i}$; and $\propto$ means proportional to, as in $y \propto x \equiv y = kx $.</p>
 <p>$C^{WT}$ and $C^{DT}$ are matrices of counts with dimensions $W\times T$ and $D\times T$ respectively:</p>
@@ -1166,8 +1339,7 @@ $$
 </div>
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
+</div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>The Gibbs sampling procedure now can be written as:</p>
 <ul>
@@ -1188,16 +1360,14 @@ $$
 </div>
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
+</div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <h2 id="Implementing-Gibbs-Sampling:-A-Toy-Example">Implementing Gibbs Sampling: A Toy Example<a class="anchor-link" href="#Implementing-Gibbs-Sampling:-A-Toy-Example">&#182;</a></h2>
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
+</div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>Implementing the above algorithm for actual usage involves a lot more than simply understanding the algorithm, such as optimizing the code performance. Instead, we will code up a toy example to make sure our approach works.</p>
 <p>First let's load up some libraries that we will use later:</p>
@@ -1223,7 +1393,7 @@ $$
 <span class="n">sns</span><span class="o">.</span><span class="n">set_palette</span><span class="p">(</span><span class="s1">&#39;Dark2&#39;</span><span class="p">)</span>
 </pre></div>
 
-</div>
+    </div>
 </div>
 </div>
 
@@ -1233,7 +1403,7 @@ $$
 
 <div class="output_area">
 
-<div class="prompt"></div>
+    <div class="prompt"></div>
 
 
 <div class="output_subarea output_stream output_stderr output_text">
@@ -1248,8 +1418,7 @@ $$
 
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
+</div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <h3 id="Data-Generation">Data Generation<a class="anchor-link" href="#Data-Generation">&#182;</a></h3><p>To make sure that our algorithm gets the right posterior distributions, we will make advantage of the generative feature of LDA and simply generate some documents -- then the posteriors will be known and we can simply check them against the results from the Gibbs sampling.</p>
 <p>We first generate same documents, using the examples in Steyvers &amp; Griffiths, 2007. We simplify some of the aspects of the data: Our vocabulary only consists of five words, $V={money, loan, bank, river, stream}$; and there are only two topics. Topic 1 gives equal probability to the first three words, i.e. $\phi_{money}^1 = 1/3$, $\phi_{loan}^1 = 1/3$, $\phi_{bank}^1 = 1/3$, while topic 2 gives equal probability to the last three words, $\phi_{bank}^2 = 1/3$, $\phi_{stream}^2 = 1/3$, $\phi_{river}^2 = 1/3$. Using these distributions, we can generate documents using the generative structure outlined above. For our example, we generated 16 documents, where each document has only been assigned one topic (rather than a mixture of topics).</p>
@@ -1269,7 +1438,7 @@ $$
         <span class="s2">&quot;stream&quot;</span><span class="p">]</span>
 </pre></div>
 
-</div>
+    </div>
 </div>
 </div>
 
@@ -1286,7 +1455,7 @@ $$
 <span class="n">phi_actual</span>
 </pre></div>
 
-</div>
+    </div>
 </div>
 </div>
 
@@ -1296,7 +1465,7 @@ $$
 
 <div class="output_area">
 
-<div class="prompt output_prompt">Out[3]:</div>
+    <div class="prompt output_prompt">Out[3]:</div>
 
 
 
@@ -1341,14 +1510,13 @@ $$
     <span class="n">docs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">words</span><span class="p">)</span>
 </pre></div>
 
-</div>
+    </div>
 </div>
 </div>
 
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
+</div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>Let's look at two of our generated documents:</p>
 
@@ -1364,7 +1532,7 @@ $$
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">docs</span><span class="p">[</span><span class="mi">5</span><span class="p">]))</span>
 </pre></div>
 
-</div>
+    </div>
 </div>
 </div>
 
@@ -1374,7 +1542,7 @@ $$
 
 <div class="output_area">
 
-<div class="prompt"></div>
+    <div class="prompt"></div>
 
 
 <div class="output_subarea output_stream output_stdout output_text">
@@ -1389,8 +1557,7 @@ river river bank stream river stream stream bank stream river stream river strea
 
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
+</div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>Obviously, they don't make a whole lot of sense, but that's fine. This is a toy example after all! For each document, we can also examine which topics the words were drawn from -- in an actual LDA implementation, this would be a mixture of topics:</p>
 
@@ -1405,7 +1572,7 @@ river river bank stream river stream stream bank stream river stream river strea
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">orig_topics</span>
 </pre></div>
 
-</div>
+    </div>
 </div>
 </div>
 
@@ -1415,7 +1582,7 @@ river river bank stream river stream stream bank stream river stream river strea
 
 <div class="output_area">
 
-<div class="prompt output_prompt">Out[6]:</div>
+    <div class="prompt output_prompt">Out[6]:</div>
 
 
 
@@ -1431,8 +1598,7 @@ river river bank stream river stream stream bank stream river stream river strea
 
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
+</div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <h3 id="Initialize--pointers">Initialize  pointers<a class="anchor-link" href="#Initialize--pointers">&#182;</a></h3><p>Before we run the Gibbs sampling as outlined in the steps earlier, we initialize some pointers to keep track of words and their topics assignments:</p>
 <ul>
@@ -1477,14 +1643,13 @@ river river bank stream river stream stream bank stream river stream river strea
 <span class="n">z_i</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">z_i</span><span class="p">)</span>
 </pre></div>
 
-</div>
+    </div>
 </div>
 </div>
 
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
+</div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>Then we can initialize our count matrices $C^{WT}$ and $C^{DT}$ -- as our initial topic assignments were random, they should be roughly split 50/50 across each topic.</p>
 
@@ -1514,14 +1679,13 @@ river river bank stream river stream stream bank stream river stream river strea
         <span class="n">DT</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">topics</span> <span class="o">==</span> <span class="n">t</span><span class="p">)</span>
 </pre></div>
 
-</div>
+    </div>
 </div>
 </div>
 
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
+</div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>We can now examine the count matrices. We also make a copy of the matrices to compare the final matrices to the original ones later.</p>
 
@@ -1538,7 +1702,7 @@ river river bank stream river stream stream bank stream river stream river strea
 <span class="n">WT_orig</span>
 </pre></div>
 
-</div>
+    </div>
 </div>
 </div>
 
@@ -1548,7 +1712,7 @@ river river bank stream river stream stream bank stream river stream river strea
 
 <div class="output_area">
 
-<div class="prompt output_prompt">Out[9]:</div>
+    <div class="prompt output_prompt">Out[9]:</div>
 
 
 
@@ -1577,7 +1741,7 @@ river river bank stream river stream stream bank stream river stream river strea
 <span class="n">DT</span>
 </pre></div>
 
-</div>
+    </div>
 </div>
 </div>
 
@@ -1587,7 +1751,7 @@ river river bank stream river stream stream bank stream river stream river strea
 
 <div class="output_area">
 
-<div class="prompt output_prompt">Out[10]:</div>
+    <div class="prompt output_prompt">Out[10]:</div>
 
 
 
@@ -1618,8 +1782,7 @@ river river bank stream river stream stream bank stream river stream river strea
 
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
+</div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <h3 id="The-exciting-part---runnings-the-Gibbs-sampler">The exciting part - runnings the Gibbs sampler<a class="anchor-link" href="#The-exciting-part---runnings-the-Gibbs-sampler">&#182;</a></h3><p>We can now run <code>iters</code> Gibbs iterations. In each step, we cycle through each word token, and update its topic assignment $z_i$ given the formula outlined earlier. We basically are translating the conceptual steps into Python code! We will also keep track of the topic assignments to later visualize their change over time.</p>
 
@@ -1674,14 +1837,13 @@ river river bank stream river stream stream bank stream river stream river strea
         <span class="n">phi_2</span><span class="p">[:,</span><span class="n">step</span><span class="p">]</span> <span class="o">=</span> <span class="n">phi</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span>
 </pre></div>
 
-</div>
+    </div>
 </div>
 </div>
 
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
+</div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <h3 id="Examine-final-count-matrices">Examine final count matrices<a class="anchor-link" href="#Examine-final-count-matrices">&#182;</a></h3><p>We can now examine the final count matrices! If our algorithm worked, they should no longer show a random structure, and instead strongly lean towards the right topic assignment for each document and term. First, let's look at $C^{DT}$.</p>
 
@@ -1696,7 +1858,7 @@ river river bank stream river stream stream bank stream river stream river strea
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">DT</span>
 </pre></div>
 
-</div>
+    </div>
 </div>
 </div>
 
@@ -1706,7 +1868,7 @@ river river bank stream river stream stream bank stream river stream river strea
 
 <div class="output_area">
 
-<div class="prompt output_prompt">Out[12]:</div>
+    <div class="prompt output_prompt">Out[12]:</div>
 
 
 
@@ -1737,8 +1899,7 @@ river river bank stream river stream stream bank stream river stream river strea
 
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
+</div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>Clearly, each document (row) has now a topic that has the majority of all assignments. We get a similar result for the final $C^{WT}$:</p>
 
@@ -1753,7 +1914,7 @@ river river bank stream river stream stream bank stream river stream river strea
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">WT</span>
 </pre></div>
 
-</div>
+    </div>
 </div>
 </div>
 
@@ -1763,7 +1924,7 @@ river river bank stream river stream stream bank stream river stream river strea
 
 <div class="output_area">
 
-<div class="prompt output_prompt">Out[13]:</div>
+    <div class="prompt output_prompt">Out[13]:</div>
 
 
 
@@ -1783,8 +1944,7 @@ river river bank stream river stream stream bank stream river stream river strea
 
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
+</div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <h3 id="Calculate-posteriors">Calculate posteriors<a class="anchor-link" href="#Calculate-posteriors">&#182;</a></h3><p>Now we can use the other formulaes to calculate posteriors $\phi$ and $\theta$ -- remember, those are the actual distributions we are interested in. They are now much closer to the true distributions, showing that we successfully infered approximatins of the posteriors:</p>
 
@@ -1800,7 +1960,7 @@ river river bank stream river stream stream bank stream river stream river strea
 <span class="n">phi</span>
 </pre></div>
 
-</div>
+    </div>
 </div>
 </div>
 
@@ -1810,7 +1970,7 @@ river river bank stream river stream stream bank stream river stream river strea
 
 <div class="output_area">
 
-<div class="prompt output_prompt">Out[14]:</div>
+    <div class="prompt output_prompt">Out[14]:</div>
 
 
 
@@ -1840,7 +2000,7 @@ river river bank stream river stream stream bank stream river stream river strea
 <span class="n">theta</span>
 </pre></div>
 
-</div>
+    </div>
 </div>
 </div>
 
@@ -1850,7 +2010,7 @@ river river bank stream river stream stream bank stream river stream river strea
 
 <div class="output_area">
 
-<div class="prompt output_prompt">Out[15]:</div>
+    <div class="prompt output_prompt">Out[15]:</div>
 
 
 
@@ -1890,7 +2050,7 @@ river river bank stream river stream stream bank stream river stream river strea
 <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="n">orig_topics</span>
 </pre></div>
 
-</div>
+    </div>
 </div>
 </div>
 
@@ -1900,7 +2060,7 @@ river river bank stream river stream stream bank stream river stream river strea
 
 <div class="output_area">
 
-<div class="prompt output_prompt">Out[16]:</div>
+    <div class="prompt output_prompt">Out[16]:</div>
 
 
 
@@ -1917,8 +2077,7 @@ river river bank stream river stream stream bank stream river stream river strea
 
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
+</div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <h3 id="Plot-Results">Plot Results<a class="anchor-link" href="#Plot-Results">&#182;</a></h3><p>We can also plot these results. The first plot shows the probability of a word assigned to a topic over iterations. The first 20 iterations here are plotted, and we can see that the distributions settle relatively quickly around their final probabilities.</p>
 <p>The second plot shows a visualization of $\phi$. The original, generated $\phi$ matrix is shown, then the matrix at the beginning of the Gibbs sampling (which is random), and then $\phi$ after running Gibbs. While the initial distribution is random, the distribution at the end of our Gibbs sampling is very close to the true distribution.</p>
@@ -1952,7 +2111,7 @@ river river bank stream river stream stream bank stream river stream river strea
 <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
 </pre></div>
 
-</div>
+    </div>
 </div>
 </div>
 
@@ -1962,7 +2121,7 @@ river river bank stream river stream stream bank stream river stream river strea
 
 <div class="output_area">
 
-<div class="prompt"></div>
+    <div class="prompt"></div>
 
 
 
@@ -2506,7 +2665,7 @@ EEJ0OJLgCCGEEKLDkQRHCCGEEB2OJDhCCCGE6HD+H2eLoaWG+8H9AAAAAElFTkSuQmCC
 <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
 </pre></div>
 
-</div>
+    </div>
 </div>
 </div>
 
@@ -2516,7 +2675,7 @@ EEJ0OJLgCCGEEKLDkQRHCCGEEB2OJDhCCCGE6HD+H2eLoaWG+8H9AAAAAElFTkSuQmCC
 
 <div class="output_area">
 
-<div class="prompt"></div>
+    <div class="prompt"></div>
 
 
 
@@ -2870,8 +3029,7 @@ ggUAAAAAJWGCBQAAAAAlYYIFAAAAACVhggUAAAAAJfkNa3hHdwWjgKgAAAAASUVORK5CYII=
 
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
+</div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>Now you know how to use Gibbs Sampling for LDA! Once you boil down all the steps, it's not that complicated anymore. If you interested in the original papers, check them out. They show some nice applications of LDA and go into a little more detail with respect to the implementation.</p>
 <h2 id="Further-Reading">Further Reading<a class="anchor-link" href="#Further-Reading">&#182;</a></h2><ul>
@@ -2954,6 +3112,8 @@ ggUAAAAAJWGCBQAAAAAlYYIFAAAAACVhggUAAAAAJfkNa3hHdwWjgKgAAAAASUVORK5CYII=
         </div>
     </div>
 </div>
+<!-- End Content Container -->
+
 <footer>
    <div class="container">
       <hr>
@@ -2973,6 +3133,7 @@ ggUAAAAAJWGCBQAAAAAlYYIFAAAAACVhggUAAAAAJfkNa3hHdwWjgKgAAAAASUVORK5CYII=
 
 <!-- Enable responsive features in IE8 with Respond.js (https://github.com/scottjehl/Respond) -->
 <script src="./theme/js/respond.min.js"></script>
+
 
 
 
