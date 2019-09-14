@@ -1292,7 +1292,7 @@ h6:hover .anchor-link {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h3 id="Common-use-cases">Common use cases<a class="anchor-link" href="#Common-use-cases">&#182;</a></h3>
+<h3 id="Common-use-cases">Common use cases<a class="anchor-link" href="#Common-use-cases">&#182;</a></h3><h4 id="Order-doesn't-matter">Order doesn't matter<a class="anchor-link" href="#Order-doesn't-matter">&#182;</a></h4><h4 id="Idempotent">Idempotent<a class="anchor-link" href="#Idempotent">&#182;</a></h4><h4 id="Hard-to-Prove,-Easy-to-Verify">Hard to Prove, Easy to Verify<a class="anchor-link" href="#Hard-to-Prove,-Easy-to-Verify">&#182;</a></h4>
 </div>
 </div>
 </div>
@@ -1306,7 +1306,7 @@ h6:hover .anchor-link {
 <li>Adding a number and subtracting the same number should result in the original number.</li>
 </ul>
 <p>Crucially, it doesn't matter what the input here is to the test, these <em>properties</em> should hold true for any and all inputs. No matter what row you insert, deleting it should result in exactly the same start state!</p>
-
+<h4 id="just-use-it-for-random-input">just use it for random input<a class="anchor-link" href="#just-use-it-for-random-input">&#182;</a></h4>
 </div>
 </div>
 </div>
@@ -1325,9 +1325,9 @@ h6:hover .anchor-link {
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-scala"><pre><span></span><span class="k">case</span> <span class="k">class</span> <span class="nc">Customer</span><span class="o">(</span>
-    <span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span>
-    <span class="n">address</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span>
-    <span class="n">age</span><span class="k">:</span> <span class="kt">Int</span>
+  <span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span>
+  <span class="n">address</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span>
+  <span class="n">age</span><span class="k">:</span> <span class="kt">Int</span>
 <span class="o">)</span>
 </pre></div>
 
@@ -1373,11 +1373,11 @@ h6:hover .anchor-link {
 
 <span class="k">val</span> <span class="n">intGen</span><span class="k">:</span> <span class="kt">Gen</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Gen</span><span class="o">.</span><span class="n">choose</span><span class="o">(</span><span class="nc">Integer</span><span class="o">.</span><span class="nc">MIN_VALUE</span><span class="o">,</span> <span class="nc">Integer</span><span class="o">.</span><span class="nc">MAX_VALUE</span><span class="o">)</span>
 <span class="k">val</span> <span class="n">stringGen</span><span class="k">:</span> <span class="kt">Gen</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
-      <span class="c1">// String shoud have length between 1 and 20</span>
-      <span class="n">n</span> <span class="k">&lt;-</span> <span class="nc">Gen</span><span class="o">.</span><span class="n">choose</span><span class="o">(</span><span class="n">min</span> <span class="k">=</span> <span class="mi">1</span><span class="o">,</span> <span class="n">max</span> <span class="k">=</span> <span class="mi">20</span><span class="o">)</span>
-     <span class="c1">// Choosing any alpha-numeric char n times and concat</span>
-      <span class="n">string</span> <span class="k">&lt;-</span> <span class="nc">Gen</span><span class="o">.</span><span class="n">listOfN</span><span class="o">(</span><span class="n">n</span> <span class="k">=</span> <span class="n">n</span><span class="o">,</span> <span class="n">g</span> <span class="k">=</span> <span class="nc">Gen</span><span class="o">.</span><span class="n">alphaNumChar</span><span class="o">).</span><span class="n">map</span><span class="o">(</span><span class="k">_</span><span class="o">.</span><span class="n">mkString</span><span class="o">)</span>
-    <span class="o">}</span> <span class="k">yield</span> <span class="n">string</span>
+    <span class="c1">// String shoud have length between 1 and 20</span>
+    <span class="n">n</span> <span class="k">&lt;-</span> <span class="nc">Gen</span><span class="o">.</span><span class="n">choose</span><span class="o">(</span><span class="n">min</span> <span class="k">=</span> <span class="mi">1</span><span class="o">,</span> <span class="n">max</span> <span class="k">=</span> <span class="mi">20</span><span class="o">)</span>
+    <span class="c1">// Choosing any alpha-numeric char n times and concat</span>
+    <span class="n">string</span> <span class="k">&lt;-</span> <span class="nc">Gen</span><span class="o">.</span><span class="n">listOfN</span><span class="o">(</span><span class="n">n</span> <span class="k">=</span> <span class="n">n</span><span class="o">,</span> <span class="n">g</span> <span class="k">=</span> <span class="nc">Gen</span><span class="o">.</span><span class="n">alphaNumChar</span><span class="o">).</span><span class="n">map</span><span class="o">(</span><span class="k">_</span><span class="o">.</span><span class="n">mkString</span><span class="o">)</span>
+  <span class="o">}</span> <span class="k">yield</span> <span class="n">string</span>
 </pre></div>
 
     </div>
@@ -1506,20 +1506,20 @@ h6:hover .anchor-link {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[6]:</div>
+<div class="prompt input_prompt">In&nbsp;[2]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-scala"><pre><span></span><span class="k">val</span> <span class="n">customerGen</span><span class="k">:</span> <span class="kt">Gen</span><span class="o">[</span><span class="kt">Customer</span><span class="o">]</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
-      <span class="n">name</span> <span class="k">&lt;-</span> <span class="n">stringGen</span>
-      <span class="n">address</span> <span class="k">&lt;-</span> <span class="n">stringGen</span>
-      <span class="n">age</span> <span class="k">&lt;-</span> <span class="n">intGen</span>
-    <span class="o">}</span> <span class="k">yield</span> <span class="o">{</span>
-      <span class="nc">Customer</span><span class="o">(</span>
-        <span class="n">name</span> <span class="k">=</span> <span class="n">name</span><span class="o">,</span>
-        <span class="n">address</span> <span class="k">=</span> <span class="n">address</span><span class="o">,</span>
-        <span class="n">age</span> <span class="k">=</span> <span class="n">age</span>
-      <span class="o">)</span>
-    <span class="o">}</span>
+    <span class="n">name</span> <span class="k">&lt;-</span> <span class="n">stringGen</span>
+    <span class="n">address</span> <span class="k">&lt;-</span> <span class="n">stringGen</span>
+    <span class="n">age</span> <span class="k">&lt;-</span> <span class="n">intGen</span>
+  <span class="o">}</span> <span class="k">yield</span> <span class="o">{</span>
+    <span class="nc">Customer</span><span class="o">(</span>
+      <span class="n">name</span> <span class="k">=</span> <span class="n">name</span><span class="o">,</span>
+      <span class="n">address</span> <span class="k">=</span> <span class="n">address</span><span class="o">,</span>
+      <span class="n">age</span> <span class="k">=</span> <span class="n">age</span>
+    <span class="o">)</span>
+  <span class="o">}</span>
 <span class="o">(</span><span class="mi">1</span> <span class="n">to</span> <span class="mi">3</span><span class="o">).</span><span class="n">map</span><span class="o">(</span><span class="k">_</span> <span class="k">=&gt;</span> <span class="n">customerGen</span><span class="o">.</span><span class="n">sample</span><span class="o">)</span>
 </pre></div>
 
@@ -1533,20 +1533,31 @@ h6:hover .anchor-link {
 
 <div class="output_area">
 
-    <div class="prompt output_prompt">Out[6]:</div>
+    <div class="prompt"></div>
 
 
-
-
-<div class="output_text output_subarea output_execute_result">
-<pre><span class="ansi-cyan-fg">customerGen</span>: <span class="ansi-green-fg">Gen</span>[<span class="ansi-green-fg">Customer</span>] = org.scalacheck.Gen$$anon$3@22cf0594
-<span class="ansi-cyan-fg">res5_1</span>: <span class="ansi-green-fg">collection</span>.<span class="ansi-green-fg">immutable</span>.<span class="ansi-green-fg">IndexedSeq</span>[<span class="ansi-green-fg">Option</span>[<span class="ansi-green-fg">Customer</span>]] = <span class="ansi-yellow-fg">Vector</span>(
-  <span class="ansi-yellow-fg">Some</span>(<span class="ansi-yellow-fg">Customer</span>(<span class="ansi-green-fg">&#34;ymezxv&#34;</span>, <span class="ansi-green-fg">&#34;korsbiGhbbtitwnegdg&#34;</span>, <span class="ansi-green-fg">-871982185</span>)),
-  <span class="ansi-yellow-fg">Some</span>(<span class="ansi-yellow-fg">Customer</span>(<span class="ansi-green-fg">&#34;ujdsndLmfU1l&#34;</span>, <span class="ansi-green-fg">&#34;dwmQpf&#34;</span>, <span class="ansi-green-fg">-1686110437</span>)),
-  <span class="ansi-yellow-fg">Some</span>(<span class="ansi-yellow-fg">Customer</span>(<span class="ansi-green-fg">&#34;vgu0&#34;</span>, <span class="ansi-green-fg">&#34;wOyibzidjpgvkaszyv&#34;</span>, <span class="ansi-green-fg">-1455681854</span>))
-)</pre>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>cmd2.sc:1: not found: type Gen
+val customerGen: Gen[Customer] = for {
+                 ^cmd2.sc:2: not found: value stringGen
+    name &lt;- stringGen
+            ^cmd2.sc:3: not found: value stringGen
+    address &lt;- stringGen
+               ^cmd2.sc:4: not found: value intGen
+    age &lt;- intGen
+           ^Compilation Failed</pre>
+</div>
 </div>
 
+<div class="output_area">
+
+    <div class="prompt"></div>
+
+
+<div class="output_subarea output_text output_error">
+<pre>
+Compilation Failed</pre>
+</div>
 </div>
 
 </div>
@@ -1579,10 +1590,10 @@ h6:hover .anchor-link {
 <span class="k">import</span> <span class="nn">io.circe.syntax._</span>
 
 <span class="k">val</span> <span class="n">exampleCustomer</span> <span class="k">=</span> <span class="nc">Customer</span><span class="o">(</span>
-    <span class="n">name</span> <span class="k">=</span> <span class="s">&quot;Fred&quot;</span><span class="o">,</span>
-    <span class="n">address</span> <span class="k">=</span> <span class="s">&quot;San Francisco&quot;</span><span class="o">,</span>
-    <span class="n">age</span> <span class="k">=</span> <span class="mi">25</span>
-    <span class="o">)</span>
+  <span class="n">name</span> <span class="k">=</span> <span class="s">&quot;Fred&quot;</span><span class="o">,</span>
+  <span class="n">address</span> <span class="k">=</span> <span class="s">&quot;San Francisco&quot;</span><span class="o">,</span>
+  <span class="n">age</span> <span class="k">=</span> <span class="mi">25</span>
+<span class="o">)</span>
 
 <span class="k">val</span> <span class="n">encodedJson</span> <span class="k">=</span> <span class="n">exampleCustomer</span><span class="o">.</span><span class="n">asJson</span> <span class="c1">// encode as Json</span>
 <span class="k">val</span> <span class="n">decodedJson</span> <span class="k">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">decode</span><span class="o">[</span><span class="kt">Customer</span><span class="o">](</span><span class="n">encodedJson</span><span class="o">.</span><span class="n">toString</span><span class="o">)</span>
@@ -1762,7 +1773,7 @@ h6:hover .anchor-link {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>(Don't worry about the <code>forAllNoShrink</code> instead of <code>forAll</code>, but if you're interested in the concept of shrinking, read <a href="https://blog.ssanj.net/posts/2017-04-12-how-does-scalacheck-shrinking-work.html">this blog post</a>)</p>
+<p>(Don't worry about the <code>forAllNoShrink</code> instead of <code>forAll</code>, but if you're interested in the concept of shrinking, read <a href="https://blog.ssanj.net/posts/2017-04-12-how-does-scalacheck-shrinking-work.html">this blog post</a>. Essentially, ScalaTest shrinks the input and retries the test, which makes it easier to debug in some cases.)</p>
 <p>Now, this property will clearly fail at some point - maybe we get lucky and the generator creates some palindromes by chance, but that's quite unlikely. And indeed, it fails right away and tells what argument made it fail:</p>
 
 </div>
@@ -1829,7 +1840,7 @@ h6:hover .anchor-link {
 
 <span class="nd">@RunWith</span><span class="o">(</span><span class="n">classOf</span><span class="o">[</span><span class="kt">JUnitRunner</span><span class="o">])</span>
 <span class="k">class</span> <span class="nc">CustomerTest</span> <span class="k">extends</span> <span class="nc">FlatSpec</span>
-    <span class="k">with</span> <span class="nc">Matchers</span> <span class="k">with</span> <span class="nc">ScalaCheckDrivenPropertyChecks</span> <span class="o">{</span>
+  <span class="k">with</span> <span class="nc">Matchers</span> <span class="k">with</span> <span class="nc">ScalaCheckDrivenPropertyChecks</span> <span class="o">{</span>
 
   <span class="s">&quot;Customer case class&quot;</span> <span class="n">should</span> <span class="s">&quot;be an serializable to/from JSON&quot;</span> <span class="n">in</span> <span class="o">{</span>
     <span class="n">forAll</span><span class="o">(</span><span class="n">customerGen</span><span class="o">)</span> <span class="o">{</span> <span class="n">exp</span> <span class="k">=&gt;</span>
@@ -1887,7 +1898,8 @@ defined <span class="ansi-green-fg">class</span> <span class="ansi-cyan-fg">Cust
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="Summary">Summary<a class="anchor-link" href="#Summary">&#182;</a></h2>
+<h2 id="Summary">Summary<a class="anchor-link" href="#Summary">&#182;</a></h2><p>Write some smart summary here.</p>
+
 </div>
 </div>
 </div>
@@ -1945,19 +1957,6 @@ defined <span class="ansi-green-fg">class</span> <span class="ansi-cyan-fg">Cust
 
 </div>
 
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-scala"><pre><span></span>
-</pre></div>
-
-    </div>
 </div>
 </div>
 
